@@ -123,6 +123,7 @@ void addemail4parent(char* mailid,pid_t childpid){
     printf("No of domains added are: %d\n",noDomains);       
     printf("Recent Domain Added: %s by pid: %d\n",data[noDomains-1].domain,data[noDomains-1].pid );
     kill(childpid,SIGUSR1);
+    sleep(2);
 }
 
 void add(int signum)
@@ -143,7 +144,6 @@ if (signum == SIGUSR1)
     {	
     	usr_interrupt = 1;
         printf("Inside RecvSignal!\n");
-        run();
         
     }
     fflush ( stdout );
@@ -191,7 +191,6 @@ void run(){
 						usr_action.sa_mask = block_mask;
 						usr_action.sa_flags = 0;
 						sigaction (SIGUSR1, &usr_action, NULL);
-						printf("1 \n");
 						while(1){;}
 				    	
 				    }
@@ -285,109 +284,7 @@ int main()
    	// Establish the signal handler.
    	noDomains = 0;
    	while(1){run();}
-   	
-#if 0
-	while(true){
-		printf("Enter op\n");
-		scanf("%s",op);
-			if(comparestr(op,"add_email")){
-				printf("Entered addition zone. Enter mailid\n");
-				scanf("%s",mailid);
-				printf("Adding a new email %s\n",mailid);
-				int searchVal=searchDomain(mailid);
-				if(searchVal == -1){	//create new domain
-					printf("Adding a new process\n");
-
-
-					//fork a new process here
-					pid_t childpid; /* variable to store the child's pid */
-					int retval;     /* child process: user-provided return code */
-					int status;     /* parent process: child's exit status */
-					
-					/* only 1 int variable is needed because each process would have its
-					   own instance of the variable
-					   here, 2 int variables are used for clarity */
-					    
-					/* now create new process */
-					
-					childpid = fork();
-					
-					if (childpid >= 0) /* fork succeeded */
-					{
-						if (childpid == 0){ /* fork() returns 0 to the child process */
-							noEmails=0;
-							sigfillset (&block_mask);
-							usr_action.sa_handler = add;
-							usr_action.sa_mask = block_mask;
-							usr_action.sa_flags = 0;
-							sigaction (SIGUSR1, &usr_action, NULL);	
-					    	while(1){;}
-					    	
-					    }
-						// connect to (and possibly create) the segment: //
-				           if(childpid > 0){
-				           		sigfillset (&block_mask);
-				           		usr_action.sa_handler = recvsignal;
-				           		usr_action.sa_mask = block_mask;
-				           		usr_action.sa_flags = 0;
-				           		sigaction (SIGUSR1, &usr_action, NULL);	
-					           	if ((shmid = shmget(ftok(".",'s'), SHM_SIZE, IPC_CREAT|0644)) == -1) {
-					               perror("shmget");
-					               exit(1);
-					           }
-						        // attach to the segment to get a pointer to it: //
-					            char* shareddata = malloc(100*sizeof(char));
-					            shareddata = shmat(shmid, (void *)0, 0);
-					            if (shareddata == (char *)(-1)) {
-					                perror("shmat");
-					                exit(1);
-					            }
-					            //writing to the segment shared memory
-					            strncpy(shareddata, mailid, SHM_SIZE);
-					            printf("writing to segment: \"%s\"\n", mailid);
-					            printf("%s shared data\n",shareddata);
-					    		addemail4parent(mailid,childpid);
-					    		while(1){;}
-					       	}
-
-
-					    
-
-					   
-					}
-					else /* fork returns -1 on failure */
-					{
-					    perror("fork"); /* display error message */
-					    exit(0); 
-					}
-				}
-				break;
-			}
-			else if(comparestr(op,'delete_email')){
-				scanf("%s",mailid);
-				printf("Delete email\n");
-				break;
-			}
-			else if(comparestr(op,'search_email')){
-				scanf("%s",mailid);
-				printf("Search email\n");
-				break;
-			}
-			else if(comparestr(op,'delete_domain')){
-				scanf("%s",mailid);
-				printf("delete_domain\n");
-				break;
-			}
-			else if(comparestr(op,'Quit')){
-				printf("Quit\n");
-				break;
-			}
-		
-		return 0;
-	    
-    }
-    #endif
-    return 0;
+   	return 0;
 }
 
 
