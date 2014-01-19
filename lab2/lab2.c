@@ -81,9 +81,7 @@ void child_handler_kill(int sig, siginfo_t *siginfo, void *context){
 int searchDomain(char* domain){ // -1 implies not found
 	bool check=false;
 	int i;
-	printf("In search Domain, no of Domains=%d\n",noDomains );
 	for(i=0;i<noDomains;i++){
-		printf("Domain %d %s\n",i,data[i].domain);
 		if(strcmp(data[i].domain,domain)==0){
 			check = true;
 			return i;
@@ -96,7 +94,6 @@ int searchDomain(char* domain){ // -1 implies not found
 
 void addtoemaillist(char* email,char* domainname){
 	int i;
-	printf("email to be added %s\n",email );
 	for(i=0;i<noEmails;i++){
 		if(strcmp(emails[i].email,email) == 0){
 			sprintf(c2pshared->msg, "Child process %s - Email address already exists\n", domainname);
@@ -112,7 +109,6 @@ void addtoemaillist(char* email,char* domainname){
 	strcpy(addedmail.email, email);
 	emails[noEmails]=addedmail;
 	noEmails++;
-	printf("Added email! Sending signal\n");
 	sprintf(c2pshared->msg, "Child process %s - Email address %s added successfully\n", domainname,email);
 	strcpy(c2pshared->op,"add_email");
 	kill(getppid(),SIGUSR2);
@@ -120,11 +116,9 @@ void addtoemaillist(char* email,char* domainname){
 }
 
 char* addemail4child(){
-    printf("CHILD: I am the child process with pid:%d !\n",getpid());
     char username[100];
     char domainname[100];
     sscanf(p2cshared->email, "%[a-zA-Z0-9]@%s",username, domainname);
-    printf("%s : shared data, in process with pid: %d \n",p2cshared->email,getpid());
     return p2cshared->email;
     fflush ( stdout );
 }
@@ -138,9 +132,6 @@ void addemail4parent(char* mailid,pid_t childpid){
 	newdomain.pid=childpid;
 	data[noDomains]=newdomain;
 	noDomains++;
-    printf("PARENT: I am the parent process with pid: %d!\n",getpid());  
-    printf("No of domains added are: %d\n",noDomains);       
-    printf("Recent Domain Added: %s by pid: %d\n",data[noDomains-1].domain,data[noDomains-1].pid );
     sleep(2);
     kill(childpid,SIGUSR1);
     sleep(2);
@@ -169,7 +160,6 @@ void child_handler(int signum)
 {
     if (signum == SIGUSR1)
     {	
-        printf("Inside Child Handler!\n");
         char username[100];
         char domainname[100];
         //printf ("child handler : : My PID :%d, Sending PID: %ld, UID: %ld\n",getpid(),
@@ -263,7 +253,6 @@ if (signum == SIGUSR2)
 	        
 			
 		}
-        printf("Done with the request! Starting Over! \n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n");
     }
     fflush ( stdout );
 }
@@ -281,7 +270,6 @@ void run(){
 			printf("Entered addition zone. Enter mailid\n");
 			scanf("%s",mailid);
 			strcpy(temp,mailid);
-			printf("Adding a new email %s\n",mailid);
 			getdomain(temp,domainname);
 			int searchVal=searchDomain(domainname);
 			if(searchVal == -1){	//create new domain
@@ -337,8 +325,6 @@ void run(){
 				         
 			           		strcpy(p2cshared->email, mailid);
 			           		strcpy(p2cshared->op, op);
-				            printf("writing to segment: \"%s\"\n", mailid);
-				            printf("shared email: %s, shared op: %s\n",p2cshared->email,p2cshared->op);
 				    		addemail4parent(mailid,childpid);
 				       	}
 				   
@@ -353,13 +339,8 @@ void run(){
 
 
 			else{
-				printf("\n------------------------------------\nDomain already exists\n");
 	           	strcpy(p2cshared->email, mailid);
 	           	strcpy(p2cshared->op, op);
-	            printf("writing to segment: \"%s\"\n", mailid);
-	            printf("%s shared data\n",p2cshared->email);
-	    		printf("PARENT: I am the parent process with pid: %d!\n",getpid());  
-	    		printf("No of domains added are: %d\n",noDomains); 
 	    		sleep(2);
 	    		kill(data[searchVal].pid,SIGUSR1);
 	    		sleep(2);      
@@ -369,19 +350,16 @@ void run(){
 		else if(comparestr(op,"delete_email")){
 			printf("Entered deleting zone. Enter mailid\n");
 			scanf("%s",mailid);
-			printf("Deleting email....\n");
 			operationp(mailid,op);
 		}
 		else if(comparestr(op,"search_email")){
 			printf("Entered searching zone. Enter mailid\n");
 			scanf("%s",mailid);
-			printf("Searching email....\n");
 			operationp(mailid,op);
 		}
 		else if(comparestr(op,"delete_domain")){
 			printf("Entered deleting zone. Enter mailid\n");
 			scanf("%s",mailid);
-			printf("Deleting domain....\n");
 			int id=searchDomain(mailid);
 			if(id==-1){
 				printf("Parent: Domain does not exist\n");
@@ -410,7 +388,7 @@ void run(){
 			
 		}
 		else{
-			printf("incorrect input: try again");
+			printf("Incorrect input: try again");
 		}
 	    
 }
