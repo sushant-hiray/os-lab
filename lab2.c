@@ -133,6 +133,25 @@ void addemail4parent(char* mailid,pid_t childpid){
     kill(childpid,SIGUSR1);
     sleep(2);
 }
+void deletemailc(){
+	int i=0;
+	for(i=0;i<noEmails;i++){
+		if(strcmp(emails[i].email,p2cshared->email)==0){
+			strcpy(c2pshared->msg,p2cshared->email);
+			strcpy(c2pshared->op,"delete_email");
+			c2pshared->index=i;
+			emails[i].email[0]='\0';
+			kill(getppid(),SIGUSR1);
+			return;
+		}
+
+	}
+	strcpy(c2pshared->msg,p2cshared->email);
+	strcpy(c2pshared->op,"delete_email");
+	c2pshared->index=-1;
+	kill(getppid(),SIGUSR1);
+	return;
+}
 
 void child_handler(int signum)
 {
@@ -149,7 +168,7 @@ void child_handler(int signum)
 			addtoemaillist(mail,domainname);
 		}
 		else if(strcmp(p2cshared->op, "delete_email")==0){
-	        char* mail=addemail4child();
+	        deletemailc();
 			
 		}
 		else if(strcmp(p2cshared->op, "search_email")==0){
@@ -184,7 +203,8 @@ void searchemailc(){
 	return;
 
 }
-void seachemailp(char* mailid){
+
+void operationp(char* mailid,char* op){
 	int i;
 	char username[100];
 	char domainname[100];
@@ -194,7 +214,7 @@ void seachemailp(char* mailid){
 	for(i=0;i<noDomains;i++){
 		if(strcmp(data[i].domain,domainname)==0){
 			strcpy(p2cshared->email,mailid);
-			strcpy(p2cshared->op,"search_email");
+			strcpy(p2cshared->op,op);
 			sleep(2);
 			kill(data[i].pid,SIGUSR1);
 			sleep(2);
@@ -210,7 +230,16 @@ if (signum == SIGUSR1)
 	        printf("%s\n", c2pshared->msg);
 		}
 		else if(strcmp(c2pshared->op, "delete_email")==0){
-	        
+			char username[100];
+			char domainname[100];
+			sscanf(c2pshared->msg, "%[a-zA-Z0-9]@%s",username, domainname);
+	        if(c2pshared->index==-1){
+	        	printf("Parent Process: child %s could not find email address %s\n",domainname,c2pshared->msg );
+	        }
+	        else{
+	        	
+	        	printf("Child Process: child %s deleted %s at index %d\n",domainname,c2pshared->msg,c2pshared->index );
+	        }
 			
 		}
 		else if(strcmp(c2pshared->op, "search_email")==0){
@@ -309,21 +338,10 @@ void run(){
            		usr_action.sa_mask = block_mask;
            		usr_action.sa_flags = 0;
            		sigaction (SIGUSR1, &usr_action, NULL);	
-	           	if ((shmid = shmget(ftok(".",'s'), SHM_SIZE, IPC_CREAT|0644)) == -1) {
-	               perror("shmget");
-	               exit(1);
-	           }
-		        // attach to the segment to get a pointer to it: //
-	            char* shareddata = malloc(100*sizeof(char));
-	            shareddata = shmat(shmid, (void *)0, 0);
-	            if (shareddata == (char *)(-1)) {
-	                perror("shmat");
-	                exit(1);
-	            }
-	            //writing to the segment shared memory
-	            strncpy(shareddata, mailid, 80*sizeof(char));
+	           	strcpy(p2cshared->email, mailid);
+	           	strcpy(p2cshared->op, op);
 	            printf("writing to segment: \"%s\"\n", mailid);
-	            printf("%s shared data\n",shareddata);
+	            printf("%s shared data\n",p2cshared->email);
 	    		printf("PARENT: I am the parent process with pid: %d!\n",getpid());  
 	    		printf("No of domains added are: %d\n",noDomains); 
 	    		sleep(2);
@@ -333,14 +351,16 @@ void run(){
 			}
 		}
 		else if(comparestr(op,"delete_email")){
+			printf("Entered deleting zone. Enter mailid\n");
 			scanf("%s",mailid);
-			printf("Delete email\n");
+			printf("Deleting email....\n");
+			operationp(mailid,op);
 		}
 		else if(comparestr(op,"search_email")){
 			printf("Entered searching zone. Enter mailid\n");
 			scanf("%s",mailid);
 			printf("Searching email....\n");
-			seachemailp(mailid);
+			operationp(mailid,op);
 		}
 		else if(comparestr(op,"delete_domain")){
 			scanf("%s",mailid);
