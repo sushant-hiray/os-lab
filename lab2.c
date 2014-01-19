@@ -11,6 +11,7 @@
 #include <sys/mman.h>
 #define SHM_SIZE 1024  /* make it a 1K shared memory segment */
 
+
 typedef enum { false, true } bool;
 typedef struct{
 	char domain[50];
@@ -68,16 +69,24 @@ int comparestr(char a[], char b[]){
 }
 
 
+void child_handler_kill(int sig, siginfo_t *siginfo, void *context){
+    printf("Killing myself : domain %s .. printing emails\n", p2cshared->email);
+    int i;
+    for(i=0;i<noEmails;i++){
+            printf("\tEmail : %s\n", emails[i].email);
+    }
+    raise(SIGKILL);
+}
 
-int searchDomain(char domain[]){ // -1 implies not found
+int searchDomain(char* domain){ // -1 implies not found
 	bool check=false;
 	int i;
 	printf("In search Domain, no of Domains=%d\n",noDomains );
 	for(i=0;i<noDomains;i++){
 		printf("Domain %d %s\n",i,data[i].domain);
-		if(comparestr(data[i].domain,domain)){
+		if(strcmp(data[i].domain,domain)==0){
 			check = true;
-			return data[i].pid;
+			return i;
 		}
 	}
 	if(!check){
@@ -175,11 +184,6 @@ void child_handler(int signum)
 	        searchemailc();
 			
 		}
-		else if(strcmp(p2cshared->op, "delete_domain")==0){
-	        char* mail=addemail4child();
-			
-		}
-
         
     }
     fflush ( stdout );
@@ -303,6 +307,19 @@ void run(){
 						usr_action.sa_mask = block_mask;
 						usr_action.sa_flags = 0;
 						sigaction (SIGUSR1, &usr_action, NULL);
+						struct sigaction act2;
+						
+						memset (&act2, '\0', sizeof(act2));
+						
+						/* Use the sa_sigaction field because the handles has two additional parameters */
+						act2.sa_sigaction = &child_handler_kill;
+						
+						/* The SA_SIGINFO flag tells sigaction() to use the sa_sigaction field, not sa_handler. */
+						act2.sa_flags = SA_SIGINFO;
+						
+						if (sigaction(SIGTERM, &act2, NULL) < 0) {
+						    printf ("sigaction");
+						}
 						while(1){;}
 				    	
 				    }
@@ -363,11 +380,35 @@ void run(){
 			operationp(mailid,op);
 		}
 		else if(comparestr(op,"delete_domain")){
+			printf("Entered deleting zone. Enter mailid\n");
 			scanf("%s",mailid);
-			printf("delete_domain\n");
+			printf("Deleting domain....\n");
+			int id=searchDomain(mailid);
+			if(id==-1){
+				printf("Parent: Domain does not exist\n");
+			}
+			else{
+				kill(data[id].pid,SIGTERM);
+				waitpid(data[id].pid, 0, 0); //important for wait so that child doesnt become zombie
+				                                    //A child that terminates, but has not been waited for becomes a "zombie". 
+				printf("Parent process - Domain %s with PID - %d deleted\n", mailid, data[id].pid);
+				data[id].pid = -1;
+				data[id].domain[0]='\0';
+			}
 		}
 		else if(comparestr(op,"Quit")){
 			printf("Quit\n");
+			int i=0;
+			for(i=0;i<noDomains;i++){
+			    if(data[i].pid != 0){
+			         
+			         kill(data[i].pid, SIGTERM); 
+			         waitpid(data[i].pid, 0, 0); //important for wait so that child doesnt become zombie
+			     }
+			}
+			printf("Parent : Killed all children, now suicide awaits\n");
+			//raise(SIGKILL);
+			
 		}
 		else{
 			printf("incorrect input: try again");
