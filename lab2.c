@@ -12,23 +12,24 @@
 
 typedef enum { false, true } bool;
 typedef struct{
-	char* domain;
+	char domain[50];
 	int pid;
 } domainData;
 
 typedef struct{
-	char* email;
+	char email[100];
 } mailid;
 
 mailid emails[100]; //array of emails
 
 domainData data[100]; //array of domain and child pids
+
 int noDomains;
 int shmid;
 int noEmails;
 volatile sig_atomic_t usr_interrupt = 0;
 
-void getdomain(char email[], char domain[]){
+void getdomain(char *email, char *domain){
     char *p;
     p = strtok(email, "@");
 
@@ -61,6 +62,7 @@ int searchDomain(char domain[]){ // -1 implies not found
 	int i;
 	printf("In search Domain, no of Domains=%d\n",noDomains );
 	for(i=0;i<noDomains;i++){
+		printf("Domain %d %s\n",i,data[i].domain);
 		if(comparestr(data[i].domain,domain)){
 			check = true;
 			return data[i].pid;
@@ -75,22 +77,22 @@ void addtoemaillist(char* email){
 	int i;
 	printf("email to be added %s\n",email );
 	for(i=0;i<noEmails;i++){
-		if(strcmp(emails[i].email,email)){
+		if(strcmp(emails[i].email,email) == 0){
 			printf("Email is already present\n");
 			return;
 		}
 	}
 
 	mailid addedmail;
-	addedmail.email=email;
+	strcpy(addedmail.email, email);
 	emails[noEmails]=addedmail;
 	noEmails++;
 	printf("Added email! Sending signal\n");
 	kill(getppid(),SIGUSR1);
+	fflush ( stdout );
 }
 
 char* addemail4child(){
-	while (!usr_interrupt){;} 
     printf("CHILD: I am the child process with pid:%d !\n",getpid());
    	char* masala = malloc(1000*sizeof(char));
    	int id;
@@ -112,16 +114,18 @@ char* addemail4child(){
 
 
 void addemail4parent(char* mailid,pid_t childpid){
+	printf("No of domains added are\n");  
 	char domainname[80];
 	getdomain(mailid,domainname);
 	domainData newdomain;
-	newdomain.domain=domainname;
+	strcpy(newdomain.domain,domainname);
 	newdomain.pid=childpid;
 	data[noDomains]=newdomain;
 	noDomains++;
     printf("PARENT: I am the parent process with pid: %d!\n",getpid());  
     printf("No of domains added are: %d\n",noDomains);       
     printf("Recent Domain Added: %s by pid: %d\n",data[noDomains-1].domain,data[noDomains-1].pid );
+    sleep(2);
     kill(childpid,SIGUSR1);
     sleep(2);
 }
@@ -142,9 +146,7 @@ void add(int signum)
 void recvsignal(int signum){
 if (signum == SIGUSR1)
     {	
-    	usr_interrupt = 1;
         printf("Inside RecvSignal!\n");
-        
     }
     fflush ( stdout );
 }
