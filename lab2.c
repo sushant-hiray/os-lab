@@ -100,7 +100,10 @@ void addtoemaillist(char* email,char* domainname){
 	for(i=0;i<noEmails;i++){
 		if(strcmp(emails[i].email,email) == 0){
 			sprintf(c2pshared->msg, "Child process %s - Email address already exists\n", domainname);
-			kill(getppid(),SIGUSR1);
+			strcpy(c2pshared->op,"add_email");
+			sleep(1);
+			kill(getppid(),SIGUSR2);
+			sleep(1);
 			return;
 		}
 	}
@@ -112,7 +115,7 @@ void addtoemaillist(char* email,char* domainname){
 	printf("Added email! Sending signal\n");
 	sprintf(c2pshared->msg, "Child process %s - Email address %s added successfully\n", domainname,email);
 	strcpy(c2pshared->op,"add_email");
-	kill(getppid(),SIGUSR1);
+	kill(getppid(),SIGUSR2);
 	fflush ( stdout );
 }
 
@@ -150,7 +153,7 @@ void deletemailc(){
 			strcpy(c2pshared->op,"delete_email");
 			c2pshared->index=i;
 			emails[i].email[0]='\0';
-			kill(getppid(),SIGUSR1);
+			kill(getppid(),SIGUSR2);
 			return;
 		}
 
@@ -158,7 +161,7 @@ void deletemailc(){
 	strcpy(c2pshared->msg,p2cshared->email);
 	strcpy(c2pshared->op,"delete_email");
 	c2pshared->index=-1;
-	kill(getppid(),SIGUSR1);
+	kill(getppid(),SIGUSR2);
 	return;
 }
 
@@ -195,7 +198,7 @@ void searchemailc(){
 			strcpy(c2pshared->msg,p2cshared->email);
 			strcpy(c2pshared->op,"search_email");
 			c2pshared->index=i;
-			kill(getppid(),SIGUSR1);
+			kill(getppid(),SIGUSR2);
 			return;
 		}
 
@@ -203,7 +206,7 @@ void searchemailc(){
 	strcpy(c2pshared->msg,p2cshared->email);
 	strcpy(c2pshared->op,"search_email");
 	c2pshared->index=-1;
-	kill(getppid(),SIGUSR1);
+	kill(getppid(),SIGUSR2);
 	return;
 
 }
@@ -228,7 +231,7 @@ void operationp(char* mailid,char* op){
 	printf("Parent Process: Domain doesnt exist\n");
 }
 void parent_handler(int signum){
-if (signum == SIGUSR1)
+if (signum == SIGUSR2)
     {	
     	if(strcmp(c2pshared->op, "add_email")==0){
 	        printf("%s\n", c2pshared->msg);
@@ -307,6 +310,7 @@ void run(){
 						usr_action.sa_mask = block_mask;
 						usr_action.sa_flags = 0;
 						sigaction (SIGUSR1, &usr_action, NULL);
+						
 						struct sigaction act2;
 						
 						memset (&act2, '\0', sizeof(act2));
@@ -329,7 +333,7 @@ void run(){
 			           		usr_action.sa_handler = parent_handler;
 			           		usr_action.sa_mask = block_mask;
 			           		usr_action.sa_flags = 0;
-			           		sigaction (SIGUSR1, &usr_action, NULL);	
+			           		sigaction (SIGUSR2, &usr_action, NULL);	
 				         
 			           		strcpy(p2cshared->email, mailid);
 			           		strcpy(p2cshared->op, op);
@@ -350,11 +354,6 @@ void run(){
 
 			else{
 				printf("\n------------------------------------\nDomain already exists\n");
-           		sigfillset (&block_mask);
-           		usr_action.sa_handler = parent_handler;
-           		usr_action.sa_mask = block_mask;
-           		usr_action.sa_flags = 0;
-           		sigaction (SIGUSR1, &usr_action, NULL);	
 	           	strcpy(p2cshared->email, mailid);
 	           	strcpy(p2cshared->op, op);
 	            printf("writing to segment: \"%s\"\n", mailid);
@@ -362,7 +361,7 @@ void run(){
 	    		printf("PARENT: I am the parent process with pid: %d!\n",getpid());  
 	    		printf("No of domains added are: %d\n",noDomains); 
 	    		sleep(2);
-	    		kill(searchVal,SIGUSR1);
+	    		kill(data[searchVal].pid,SIGUSR1);
 	    		sleep(2);      
 
 			}
