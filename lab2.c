@@ -78,7 +78,8 @@ void addtoemaillist(char* email){
 	printf("email to be added %s\n",email );
 	for(i=0;i<noEmails;i++){
 		if(strcmp(emails[i].email,email) == 0){
-			printf("Email is already present\n");
+			printf("Email is already present!Sending signal\n");
+			kill(getppid(),SIGUSR1);
 			return;
 		}
 	}
@@ -114,7 +115,6 @@ char* addemail4child(){
 
 
 void addemail4parent(char* mailid,pid_t childpid){
-	printf("No of domains added are\n");  
 	char domainname[80];
 	getdomain(mailid,domainname);
 	domainData newdomain;
@@ -146,7 +146,7 @@ void add(int signum)
 void recvsignal(int signum){
 if (signum == SIGUSR1)
     {	
-        printf("Inside RecvSignal!\n");
+        printf("Done with the request! Starting Over! \n\nxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n\n");
     }
     fflush ( stdout );
 }
@@ -168,7 +168,7 @@ void run(){
 			getdomain(temp,domainname);
 			int searchVal=searchDomain(domainname);
 			if(searchVal == -1){	//create new domain
-				printf("Adding a new process\n");
+				printf("\n------------------------------------\nAdding a new process\n");
 
 
 				//fork a new process here
@@ -219,7 +219,6 @@ void run(){
 				            printf("writing to segment: \"%s\"\n", mailid);
 				            printf("%s shared data\n",shareddata);
 				    		addemail4parent(mailid,childpid);
-				    		//while(1){;}
 				       	}
 				   
 				}
@@ -233,7 +232,7 @@ void run(){
 
 
 			else{
-				printf("Domain already exists\n");
+				printf("\n------------------------------------\nDomain already exists\n");
            		sigfillset (&block_mask);
            		usr_action.sa_handler = recvsignal;
            		usr_action.sa_mask = block_mask;
@@ -254,8 +253,11 @@ void run(){
 	            strncpy(shareddata, mailid, 80*sizeof(char));
 	            printf("writing to segment: \"%s\"\n", mailid);
 	            printf("%s shared data\n",shareddata);
-	    		addemail4parent(mailid,searchVal);
-	    		while(1){;}
+	    		printf("PARENT: I am the parent process with pid: %d!\n",getpid());  
+	    		printf("No of domains added are: %d\n",noDomains); 
+	    		sleep(2);
+	    		kill(searchVal,SIGUSR1);
+	    		sleep(2);      
 
 			}
 		}
