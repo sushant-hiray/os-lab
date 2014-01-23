@@ -2,8 +2,11 @@
 *~
 *swp
 
+#Resources
+*.pdf
+
 #Temp Folder
-test_codes/
+test-codes/
 
 # Object files
 *.o
