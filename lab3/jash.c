@@ -179,9 +179,9 @@ bool analyze(char **tokens){
 	return flag;
 }
 
-
-
-
+/* 
+ Checks if the file exists
+*/
 
 bool fexists(char* file){
 	if(access(file, F_OK) != -1){
@@ -193,6 +193,11 @@ bool fexists(char* file){
 	}
 }
 
+
+/*
+ Reads the file line by line and calls appropriate function or execvp
+*/
+ 
 void run(char* bat_file){
 	if(fexists(bat_file)){
 		FILE *fp;
