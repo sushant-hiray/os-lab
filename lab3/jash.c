@@ -10,29 +10,37 @@
 
 #define MAXLINE 1000
 #define DEBUG 0
+#define MAXPARALLEL 80
 
 typedef enum { false, true } bool;
 //declarations
 char ** tokenize(char*);
 bool analyze(char**);
+bool analyze2(char**);
 void run(char*);
 bool fexists(char*);
+void parallel(char**);
 
-/* Handler for Ctrl C
-*/
-void handler(int signum){
-	if(signum==SIGINT){
-		fflush(stdout);
-		printf("\n");
-	}
-}
-/* Handler for Ctrl C
+pid_t childpid=-1;
+
+/* 
+ Handler for Ctrl C
 */
 void main_han(int signum){
 	if(signum==SIGINT){
 		fflush(stdout);
-		printf("love mera hit hit\n");
-
+		if(childpid==-1){
+			fflush(stdout);
+			printf("\n$ ");
+			fflush(stdout);
+			return;
+		}
+		else{
+			kill(childpid,SIGKILL);
+			printf("\n");
+			childpid=-1;
+			fflush(stdout);
+		}	
 		return;
 	}
 }
@@ -40,7 +48,6 @@ int main(int argc, char** argv){
 
 	//Setting the signal interrupt to its default function. 
 	signal(SIGINT, main_han);
-
 	//Allocating space to store the previous commands.
 	int numCmds = 0;
 	char **cmds = (char **)malloc(1000 * sizeof(char *));
@@ -58,8 +65,9 @@ int main(int argc, char** argv){
 	//signal(SIGINT,main_han);
 	while(notEOF) { 
 		if (printDollar == 1){ 
-
+			fflush(stdout);
 			printf("$ "); // the prompt
+			fflush(stdout);
 			fflush(stdin);
 		}
 
@@ -93,6 +101,57 @@ int main(int argc, char** argv){
 	}
 	free(tokens);
 	return 0;
+}
+
+void parallel(char** input){
+	int tokenIndex = 0;
+	int tokenNo = 0;
+	int i,status;
+	pid_t pid;
+	char *token = (char *)malloc(1000*sizeof(char));
+	for(i=0;input[i]!=NULL;i++){
+		if(strcmp(input[i],"parallel")==0){
+			continue;
+		}
+		else{
+			tokenNo = 0;
+			char **tokenlist;
+ 			tokenlist = (char**)malloc(MAXLINE*sizeof(char**));
+			while(input[i]!=NULL){
+				if(strcmp(input[i],":::")==0){
+					break;
+				}
+				else{
+					tokenlist[tokenNo] = (char*)malloc(sizeof(token));
+					strcpy(tokenlist[tokenNo],input[i]);
+					tokenNo++;
+					i++;
+					}
+			}
+			pid = fork();
+			if( pid < 0)
+			{
+				printf("Error occured: Could not fork\n");
+				return;
+				exit(-1);
+			}
+			else if(pid == 0)
+			{
+				analyze2(tokenlist);
+				return;
+			}
+			else{
+				
+				continue;
+			}
+
+			free(tokenlist);
+		}
+	}
+
+	free(token);
+	kill(getpid(),SIGINT);
+	return;
 }
 
 /*the tokenizer function takes a string of chars and forms tokens out of it*/
@@ -158,7 +217,7 @@ bool analyze(char **tokens){
 	pid_t pid;
 	int status;
 	bool flag=true;
-	signal(SIGINT,handler);
+	
 	if(strcmp(command,"cd")==0){
 		if(chdir(tokens[1])!=0){
 			printf("ERROR: %s: No such directory\n", tokens[1]);
@@ -166,6 +225,7 @@ bool analyze(char **tokens){
 		}
 	}
 	else if(strcmp(command,"run")==0){
+		
 		pid = fork();
 		if( pid < 0)
 		{
@@ -175,11 +235,11 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
-		
 			run(tokens[1]);
 			return true;
 		}
 		else{
+			childpid=pid;
 			waitpid(pid,&status,0);
 		}
 		
@@ -189,7 +249,16 @@ bool analyze(char **tokens){
 		exit(0);
 		return true;
 	}
+	else if(strcmp(command,"parallel")==0){
+		int i,j;
+		// for(i=0;tokens[i]!=NULL;i++){
+		//  	printf("%s\n", tokens[i]);
+		//  }
+		 parallel(tokens);
+		 return true;
+	}
 	else{
+		
 		pid = fork();
 		if( pid < 0)
 		{
@@ -207,6 +276,7 @@ bool analyze(char **tokens){
 			}
 		}
 		else{
+			childpid=pid;
 			waitpid(pid,&status,0);
 		}
 	}
@@ -244,7 +314,7 @@ void run(char* bat_file){
 				char **argv;
 				argv=tokenize(line);
 				if(!analyze(argv)){
-					break;
+					kill(getpid(),SIGINT);
 				}
 			}
 		}
@@ -255,3 +325,84 @@ void run(char* bat_file){
 	}
 	return;
 }
+
+
+
+
+
+
+
+/*
+Analyzes and runs appropriate command for the case of parallel
+*/
+bool analyze2(char **tokens){
+	char* command = (char *)malloc(1000*sizeof(char));
+	strcpy(command,tokens[0]);
+	pid_t pid;
+	int status;
+	bool flag=true;
+	
+	if(strcmp(command,"cd")==0){
+		if(chdir(tokens[1])!=0){
+			printf("ERROR: %s: No such directory\n", tokens[1]);
+			return false;
+		}
+	}
+	else if(strcmp(command,"run")==0){
+		
+		pid = fork();
+		if( pid < 0)
+		{
+			printf("Error occured");
+			return false;
+			exit(-1);
+		}
+		else if(pid == 0)
+		{
+			run(tokens[1]);
+			return true;
+		}
+		else{
+			childpid=pid;
+		}
+		
+		
+	}
+	else if(strcmp(command,"exit")==0){
+		exit(0);
+		return true;
+	}
+	else if(strcmp(command,"parallel")==0){
+		int i,j;
+		// for(i=0;tokens[i]!=NULL;i++){
+		//  	printf("%s\n", tokens[i]);
+		//  }
+		 parallel(tokens);
+		 return true;
+	}
+	else{
+		
+		pid = fork();
+		if( pid < 0)
+		{
+			printf("Error occured");
+			return false;
+			exit(-1);
+		}
+		else if(pid == 0)
+		{
+			if(execvp(*tokens,tokens)==-1){
+				char *error_str = strerror(errno);
+				printf("ERROR:%s %s\n",tokens[0],error_str);
+				return false;
+				exit(0);
+			}
+		}
+		else{
+			childpid=pid;
+		}
+	}
+	free(command);
+	return flag;
+}
+
