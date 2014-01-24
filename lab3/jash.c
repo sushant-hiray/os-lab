@@ -22,6 +22,7 @@ bool fexists(char*);
 */
 void handler(int signum){
 	if(signum==SIGINT){
+		kill(getpid(),SIGKILL);
 		fflush(stdout);
 		printf("\n");
 	}
@@ -31,8 +32,8 @@ void handler(int signum){
 void main_han(int signum){
 	if(signum==SIGINT){
 		fflush(stdout);
-		printf("love mera hit hit\n");
-
+		printf("\n$ ");
+		fflush(stdout);
 		return;
 	}
 }
@@ -58,8 +59,9 @@ int main(int argc, char** argv){
 	//signal(SIGINT,main_han);
 	while(notEOF) { 
 		if (printDollar == 1){ 
-
+			fflush(stdout);
 			printf("$ "); // the prompt
+			fflush(stdout);
 			fflush(stdin);
 		}
 
@@ -158,7 +160,7 @@ bool analyze(char **tokens){
 	pid_t pid;
 	int status;
 	bool flag=true;
-	signal(SIGINT,handler);
+	
 	if(strcmp(command,"cd")==0){
 		if(chdir(tokens[1])!=0){
 			printf("ERROR: %s: No such directory\n", tokens[1]);
@@ -166,6 +168,7 @@ bool analyze(char **tokens){
 		}
 	}
 	else if(strcmp(command,"run")==0){
+		
 		pid = fork();
 		if( pid < 0)
 		{
@@ -175,7 +178,7 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
-		
+			signal(SIGINT,handler);
 			run(tokens[1]);
 			return true;
 		}
@@ -190,6 +193,7 @@ bool analyze(char **tokens){
 		return true;
 	}
 	else{
+		
 		pid = fork();
 		if( pid < 0)
 		{
@@ -199,6 +203,7 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
+			signal(SIGINT,handler);
 			if(execvp(*tokens,tokens)==-1){
 				char *error_str = strerror(errno);
 				printf("ERROR:%s %s\n",tokens[0],error_str);
@@ -244,7 +249,7 @@ void run(char* bat_file){
 				char **argv;
 				argv=tokenize(line);
 				if(!analyze(argv)){
-					break;
+					kill(getpid(),SIGINT);
 				}
 			}
 		}
