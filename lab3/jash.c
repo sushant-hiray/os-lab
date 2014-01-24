@@ -12,7 +12,7 @@
 
 //declarations
 char ** tokenize(char*);
-
+void analyze(char** token);
 int main(int argc, char** argv){
 
 	//Setting the signal interrupt to its default function. 
@@ -54,9 +54,11 @@ int main(int argc, char** argv){
 		tokens = tokenize(input);	
 		// Uncomment to print tokens
 	 
-		for(i=0;tokens[i]!=NULL;i++){
-			printf("%s\n", tokens[i]);
-		}   
+		// for(i=0;tokens[i]!=NULL;i++){
+		// 	printf("%s\n", tokens[i]);
+		// }
+
+		analyze(tokens);
 	}
   
   
@@ -121,4 +123,44 @@ char ** tokenize(char* input){
 	}
 	
 	return tokens;
+}
+
+/*
+Analyzes and runs appropriate command
+*/
+void analyze(char **tokens){
+	char* command = (char *)malloc(1000*sizeof(char));
+	strcpy(command,tokens[0]);
+	pid_t pid;
+	int status;
+	if(strcmp(command,"cd")==0){
+		if(chdir(tokens[1])!=0){
+			printf("ERROR: %s: No such directory\n", tokens[1]);
+		}
+	}
+	else if(strcmp(command,"run")==0){
+		printf("Calling run\n");
+	}
+	else if(strcmp(command,"exit")==0){
+		exit(0);
+	}
+	else{
+		pid = fork();
+		if( pid < 0)
+		{
+			printf("Error occured");
+			exit(-1);
+		}
+		else if(pid == 0)
+		{
+			if(execvp(*tokens,tokens)==-1){
+				char *error_str = strerror(errno);
+				printf("ERROR: %s\n",error_str);
+			}
+		}
+		else{
+			waitpid(pid,&status,0);
+		}
+	}
+	free(command);
 }
