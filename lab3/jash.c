@@ -10,6 +10,7 @@
 
 #define MAXLINE 1000
 #define DEBUG 0
+#define MAXPARALLEL 80
 
 typedef enum { false, true } bool;
 //declarations
@@ -17,6 +18,8 @@ char ** tokenize(char*);
 bool analyze(char**);
 void run(char*);
 bool fexists(char*);
+void parallel(char**);
+
 pid_t childpid=-1;
 
 /* 
@@ -97,6 +100,49 @@ int main(int argc, char** argv){
 	}
 	free(tokens);
 	return 0;
+}
+
+void parallel(char** input){
+	int tokenIndex = 0;
+	int tokenNo = 0;
+	int i,status;
+	pid_t pid;
+	char *token = (char *)malloc(1000*sizeof(char));
+	for(i=0;input[i]!=NULL;i++){
+		if(strcmp(input[i],"parallel")==0){
+			continue;
+		}
+		else{
+			tokenNo = 0;
+			char **tokenlist;
+ 			tokenlist = (char**)malloc(MAXLINE*sizeof(char**));
+			while(strcmp(input[i],":::")!=0 && input[i]!=NULL){
+				tokenlist[tokenNo] = (char*)malloc(sizeof(token));
+				strcpy(tokenlist[tokenNo],input[i]);
+				tokenNo++;
+			}
+			pid = fork();
+			if( pid < 0)
+			{
+				printf("Error occured: Could not fork\n");
+				return;
+				exit(-1);
+			}
+			else if(pid == 0)
+			{
+				analyze(tokenlist);
+				return;
+			}
+			else{
+				childpid=pid;
+				waitpid(pid,&status,0);
+			}
+
+			free(tokenlist);
+		}
+	}
+	free(token);
+	return;
 }
 
 /*the tokenizer function takes a string of chars and forms tokens out of it*/
@@ -194,6 +240,14 @@ bool analyze(char **tokens){
 		exit(0);
 		return true;
 	}
+	else if(strcmp(command,"parallel")==0){
+		int i,j;
+		// for(i=0;tokens[i]!=NULL;i++){
+		//  	printf("%s\n", tokens[i]);
+		//  }
+		 parallel(tokens);
+		 return true;
+	}
 	else{
 		
 		pid = fork();
@@ -262,3 +316,6 @@ void run(char* bat_file){
 	}
 	return;
 }
+
+
+
