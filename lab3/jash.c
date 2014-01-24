@@ -18,11 +18,28 @@ bool analyze(char**);
 void run(char*);
 bool fexists(char*);
 
+/* Handler for Ctrl C
+*/
+void handler(int signum){
+	if(signum==SIGINT){
+		fflush(stdout);
+		printf("\n");
+	}
+}
+/* Handler for Ctrl C
+*/
+void main_han(int signum){
+	if(signum==SIGINT){
+		fflush(stdout);
+		printf("love mera hit hit\n");
 
+		return;
+	}
+}
 int main(int argc, char** argv){
 
 	//Setting the signal interrupt to its default function. 
-	signal(SIGINT, SIG_DFL);
+	signal(SIGINT, main_han);
 
 	//Allocating space to store the previous commands.
 	int numCmds = 0;
@@ -38,8 +55,10 @@ int main(int argc, char** argv){
 
 	FILE* stream = stdin;
 
+	//signal(SIGINT,main_han);
 	while(notEOF) { 
 		if (printDollar == 1){ 
+
 			printf("$ "); // the prompt
 			fflush(stdin);
 		}
@@ -59,12 +78,11 @@ int main(int argc, char** argv){
 		// Calling the tokenizer function on the input line    
 		tokens = tokenize(input);	
 		// Uncomment to print tokens
-	 
-		// for(i=0;tokens[i]!=NULL;i++){
+		for(i=0;tokens[i]!=NULL;i++){
 		// 	printf("%s\n", tokens[i]);
-		// }
-
-		analyze(tokens);
+		 }
+		 if(i!=0)
+			analyze(tokens);
 	}
   
   
@@ -140,6 +158,7 @@ bool analyze(char **tokens){
 	pid_t pid;
 	int status;
 	bool flag=true;
+	signal(SIGINT,handler);
 	if(strcmp(command,"cd")==0){
 		if(chdir(tokens[1])!=0){
 			printf("ERROR: %s: No such directory\n", tokens[1]);
@@ -147,8 +166,24 @@ bool analyze(char **tokens){
 		}
 	}
 	else if(strcmp(command,"run")==0){
-		run(tokens[1]);
-		return true;
+		pid = fork();
+		if( pid < 0)
+		{
+			printf("Error occured");
+			return false;
+			exit(-1);
+		}
+		else if(pid == 0)
+		{
+		
+			run(tokens[1]);
+			return true;
+		}
+		else{
+			waitpid(pid,&status,0);
+		}
+		
+		
 	}
 	else if(strcmp(command,"exit")==0){
 		exit(0);
@@ -164,7 +199,7 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
-			if(execvpe(*tokens,tokens,)==-1){
+			if(execvp(*tokens,tokens)==-1){
 				char *error_str = strerror(errno);
 				printf("ERROR:%s %s\n",tokens[0],error_str);
 				return false;
@@ -197,7 +232,7 @@ bool fexists(char* file){
 /*
  Reads the file line by line and calls appropriate function or execvp
 */
- 
+
 void run(char* bat_file){
 	if(fexists(bat_file)){
 		FILE *fp;
