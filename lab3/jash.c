@@ -17,23 +17,26 @@ char ** tokenize(char*);
 bool analyze(char**);
 void run(char*);
 bool fexists(char*);
+pid_t childpid=-1;
 
-/* Handler for Ctrl C
-*/
-void handler(int signum){
-	if(signum==SIGINT){
-		kill(getpid(),SIGKILL);
-		fflush(stdout);
-		printf("\n");
-	}
-}
-/* Handler for Ctrl C
+/* 
+ Handler for Ctrl C
 */
 void main_han(int signum){
 	if(signum==SIGINT){
 		fflush(stdout);
-		printf("\n$ ");
-		fflush(stdout);
+		if(childpid==-1){
+			fflush(stdout);
+			printf("\n$ ");
+			fflush(stdout);
+			return;
+		}
+		else{
+			kill(childpid,SIGKILL);
+			printf("\n");
+			childpid=-1;
+			fflush(stdout);
+		}	
 		return;
 	}
 }
@@ -41,7 +44,6 @@ int main(int argc, char** argv){
 
 	//Setting the signal interrupt to its default function. 
 	signal(SIGINT, main_han);
-
 	//Allocating space to store the previous commands.
 	int numCmds = 0;
 	char **cmds = (char **)malloc(1000 * sizeof(char *));
@@ -178,11 +180,11 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
-			signal(SIGINT,handler);
 			run(tokens[1]);
 			return true;
 		}
 		else{
+			childpid=pid;
 			waitpid(pid,&status,0);
 		}
 		
@@ -203,7 +205,6 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
-			signal(SIGINT,handler);
 			if(execvp(*tokens,tokens)==-1){
 				char *error_str = strerror(errno);
 				printf("ERROR:%s %s\n",tokens[0],error_str);
@@ -212,6 +213,7 @@ bool analyze(char **tokens){
 			}
 		}
 		else{
+			childpid=pid;
 			waitpid(pid,&status,0);
 		}
 	}
