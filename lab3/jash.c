@@ -333,7 +333,7 @@ void run(char* bat_file){
 
 
 /*
-Analyzes and runs appropriate command
+Analyzes and runs appropriate command for the case of parallel
 */
 bool analyze2(char **tokens){
 	char* command = (char *)malloc(1000*sizeof(char));
