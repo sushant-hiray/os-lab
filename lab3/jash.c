@@ -1,3 +1,4 @@
+#include <unistd.h>     /* Symbolic Constants */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,9 +11,14 @@
 #define MAXLINE 1000
 #define DEBUG 0
 
+typedef enum { false, true } bool;
 //declarations
 char ** tokenize(char*);
-void analyze(char** token);
+bool analyze(char**);
+void run(char*);
+bool fexists(char*);
+
+
 int main(int argc, char** argv){
 
 	//Setting the signal interrupt to its default function. 
@@ -128,34 +134,41 @@ char ** tokenize(char* input){
 /*
 Analyzes and runs appropriate command
 */
-void analyze(char **tokens){
+bool analyze(char **tokens){
 	char* command = (char *)malloc(1000*sizeof(char));
 	strcpy(command,tokens[0]);
 	pid_t pid;
 	int status;
+	bool flag=true;
 	if(strcmp(command,"cd")==0){
 		if(chdir(tokens[1])!=0){
 			printf("ERROR: %s: No such directory\n", tokens[1]);
+			return false;
 		}
 	}
 	else if(strcmp(command,"run")==0){
-		printf("Calling run\n");
+		run(tokens[1]);
+		return true;
 	}
 	else if(strcmp(command,"exit")==0){
 		exit(0);
+		return true;
 	}
 	else{
 		pid = fork();
 		if( pid < 0)
 		{
 			printf("Error occured");
+			return false;
 			exit(-1);
 		}
 		else if(pid == 0)
 		{
-			if(execvp(*tokens,tokens)==-1){
+			if(execvpe(*tokens,tokens,)==-1){
 				char *error_str = strerror(errno);
-				printf("ERROR: %s\n",error_str);
+				printf("ERROR:%s %s\n",tokens[0],error_str);
+				return false;
+				exit(0);
 			}
 		}
 		else{
@@ -163,4 +176,42 @@ void analyze(char **tokens){
 		}
 	}
 	free(command);
+	return flag;
+}
+
+
+
+
+
+bool fexists(char* file){
+	if(access(file, F_OK) != -1){
+	//	printf("[in run] %s file exists\n",file);
+		return true;
+	} 
+	else{
+		printf("ERROR:%s file doesn't exists\n",file);return false;
+	}
+}
+
+void run(char* bat_file){
+	if(fexists(bat_file)){
+		FILE *fp;
+		fp = fopen(bat_file, "r");
+		if(fp!=NULL){
+			char line[80];
+			while(fgets(line, 80, fp) != NULL){
+				char *cmd;
+				char **argv;
+				argv=tokenize(line);
+				if(!analyze(argv)){
+					break;
+				}
+			}
+		}
+		else{
+			printf("ERROR:file %s didn't open\n", bat_file);
+		}
+		fclose(fp);
+	}
+	return;
 }
