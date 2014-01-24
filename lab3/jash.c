@@ -16,6 +16,7 @@ typedef enum { false, true } bool;
 //declarations
 char ** tokenize(char*);
 bool analyze(char**);
+bool analyze2(char**);
 void run(char*);
 bool fexists(char*);
 void parallel(char**);
@@ -116,10 +117,16 @@ void parallel(char** input){
 			tokenNo = 0;
 			char **tokenlist;
  			tokenlist = (char**)malloc(MAXLINE*sizeof(char**));
-			while(strcmp(input[i],":::")!=0 && input[i]!=NULL){
-				tokenlist[tokenNo] = (char*)malloc(sizeof(token));
-				strcpy(tokenlist[tokenNo],input[i]);
-				tokenNo++;
+			while(input[i]!=NULL){
+				if(strcmp(input[i],":::")==0){
+					break;
+				}
+				else{
+					tokenlist[tokenNo] = (char*)malloc(sizeof(token));
+					strcpy(tokenlist[tokenNo],input[i]);
+					tokenNo++;
+					i++;
+					}
 			}
 			pid = fork();
 			if( pid < 0)
@@ -130,18 +137,20 @@ void parallel(char** input){
 			}
 			else if(pid == 0)
 			{
-				analyze(tokenlist);
+				analyze2(tokenlist);
 				return;
 			}
 			else{
-				childpid=pid;
-				waitpid(pid,&status,0);
+				
+				continue;
 			}
 
 			free(tokenlist);
 		}
 	}
+
 	free(token);
+	kill(getpid(),SIGINT);
 	return;
 }
 
@@ -318,4 +327,82 @@ void run(char* bat_file){
 }
 
 
+
+
+
+
+
+/*
+Analyzes and runs appropriate command
+*/
+bool analyze2(char **tokens){
+	char* command = (char *)malloc(1000*sizeof(char));
+	strcpy(command,tokens[0]);
+	pid_t pid;
+	int status;
+	bool flag=true;
+	
+	if(strcmp(command,"cd")==0){
+		if(chdir(tokens[1])!=0){
+			printf("ERROR: %s: No such directory\n", tokens[1]);
+			return false;
+		}
+	}
+	else if(strcmp(command,"run")==0){
+		
+		pid = fork();
+		if( pid < 0)
+		{
+			printf("Error occured");
+			return false;
+			exit(-1);
+		}
+		else if(pid == 0)
+		{
+			run(tokens[1]);
+			return true;
+		}
+		else{
+			childpid=pid;
+		}
+		
+		
+	}
+	else if(strcmp(command,"exit")==0){
+		exit(0);
+		return true;
+	}
+	else if(strcmp(command,"parallel")==0){
+		int i,j;
+		// for(i=0;tokens[i]!=NULL;i++){
+		//  	printf("%s\n", tokens[i]);
+		//  }
+		 parallel(tokens);
+		 return true;
+	}
+	else{
+		
+		pid = fork();
+		if( pid < 0)
+		{
+			printf("Error occured");
+			return false;
+			exit(-1);
+		}
+		else if(pid == 0)
+		{
+			if(execvp(*tokens,tokens)==-1){
+				char *error_str = strerror(errno);
+				printf("ERROR:%s %s\n",tokens[0],error_str);
+				return false;
+				exit(0);
+			}
+		}
+		else{
+			childpid=pid;
+		}
+	}
+	free(command);
+	return flag;
+}
 
