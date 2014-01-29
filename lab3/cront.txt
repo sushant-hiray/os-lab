@@ -1,4 +1,2 @@
-13 * 24 1 5 dflnldsfl
-* 1 2 3 4 dflnldsfl
-* 1 2 3 4 dflnldsfl
-* 1 2 3 4 dflnldsfl
+* * * * * ls
+* 23 * * 3 pwd

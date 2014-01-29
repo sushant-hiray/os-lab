@@ -11,8 +11,25 @@
 #define MAXLINE 1000
 #define DEBUG 0
 #define MAXPARALLEL 80
+#define ALARM_TIME 5
 
 typedef enum { false, true } bool;
+
+typedef struct {
+	int min;
+	int hr;
+	int day;
+	int mon;
+	int week;
+	char** argv;
+} cron_data;
+
+cron_data* c_data;
+char* cfile="cront.txt";
+int row;
+volatile sig_atomic_t flag=0;
+
+
 //declarations
 char ** tokenize(char*);
 bool analyze(char**);
@@ -22,6 +39,19 @@ bool fexists(char*);
 void parallel(char**);
 
 pid_t childpid=-1;
+
+/* 
+ Handler for alarm
+*/
+void crontab_alarm_handler(int signum){
+	if(signum==SIGALRM){
+		signal(SIGALRM, SIG_IGN);          /* ignore this signal       */
+		flag=1;
+		signal(SIGALRM, crontab_alarm_handler);     /* reinstall the handler    */
+		alarm(ALARM_TIME);
+	}
+}
+
 
 /* 
  Handler for Ctrl C
@@ -45,6 +75,13 @@ void main_han(int signum){
 	}
 }
 int main(int argc, char** argv){
+
+	file_read();
+	printf("%s\n",c_data[0].argv[0]);
+	signal(SIGALRM,crontab_alarm_handler);
+	alarm(ALARM_TIME);
+	cron_run();
+	return 0;
 
 	//Setting the signal interrupt to its default function. 
 	signal(SIGINT, main_han);
@@ -212,6 +249,7 @@ char ** tokenize(char* input){
 Analyzes and runs appropriate command
 */
 bool analyze(char **tokens){
+	printf("in analyze\n");
 	char* command = (char *)malloc(1000*sizeof(char));
 	strcpy(command,tokens[0]);
 	pid_t pid;

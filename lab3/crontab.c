@@ -11,7 +11,7 @@
 #define MAXLINE 1000
 #define LINE 100
 #define DEBUG 0
-#define ALARM_TIME 10
+
 /*
  * struct tm {
   int tm_sec;   // seconds of minutes from 0 to 61
@@ -35,62 +35,10 @@ typedef struct {
 	char** argv;
 } cron_data;
 
-cron_data* c_data;
-
-char ** tokenize(char* input){
-	int i;
-	int doubleQuotes = 0;
-	
-	char *token = (char *)malloc(1000*sizeof(char));
-	int tokenIndex = 0;
-
-	char **tokens;
-	tokens = (char **) malloc(MAXLINE*sizeof(char**));
- 
-	int tokenNo = 0;
-	
-	for(i =0; i < strlen(input); i++){
-		char readChar = input[i];
-		
-		if (readChar == '"'){
-			doubleQuotes = (doubleQuotes + 1) % 2;
-			if (doubleQuotes == 0){
-				token[tokenIndex] = '\0';
-				if (tokenIndex != 0){
-					tokens[tokenNo] = (char*)malloc(sizeof(token));
-					strcpy(tokens[tokenNo++], token);
-					tokenIndex = 0; 
-				}
-			}
-		}
-		else if (doubleQuotes == 1){
-			token[tokenIndex++] = readChar;
-		}
-		else if (readChar == ' ' || readChar == '\n' || readChar == '\t'){
-			token[tokenIndex] = '\0';
-			if (tokenIndex != 0){
-				tokens[tokenNo] = (char*)malloc(sizeof(token));
-				strcpy(tokens[tokenNo++], token);
-				tokenIndex = 0; 
-			}
-		}
-		else{
-			token[tokenIndex++] = readChar;
-		}
-	}
-	
-	if (doubleQuotes == 1){
-		token[tokenIndex] = '\0';
-		if (tokenIndex != 0){
-			tokens[tokenNo] = (char*)malloc(sizeof(token));
-			strcpy(tokens[tokenNo++], token);
-		}
-	}
-	
-	return tokens;
-}
-
-//char schedule[10][100][1000];
+extern cron_data* c_data;
+extern char* cfile;
+extern int row;
+extern volatile sig_atomic_t flag;
 
 int can_exec(int i){
 	time_t rawtime;
@@ -131,20 +79,6 @@ int can_exec(int i){
 	}
 }
 
-char* cfile="cront.txt";
-int row;
-volatile sig_atomic_t flag=0;
-
-void crontab_alarm_handler(int signum){
-	if(signum==SIGALRM){
-		signal(SIGALRM, SIG_IGN);          /* ignore this signal       */
-		flag=1;
-		signal(SIGALRM, crontab_alarm_handler);     /* reinstall the handler    */
-		alarm(ALARM_TIME);
-	}
-}
-
-
 
 int cron_run(){
 	while(1){
@@ -153,7 +87,8 @@ int cron_run(){
 			for(i=0;i<row;i++){
 				if(can_exec(i)){
 					printf("can execute %s\n",c_data[i].argv[0]);
-					char **cmds = (char **)malloc(row * sizeof(char *));
+					fflush(stdout);
+					analyze(c_data[i].argv);
 				}
 			}
 		}
@@ -162,7 +97,7 @@ int cron_run(){
 	return 1;
 }
 
-int main(){
+void file_read(){
 
 	char* file_name=malloc(100);
 	strcpy(file_name,"cront.txt");
@@ -184,10 +119,7 @@ int main(){
 			if(strcmp(ctoken[4],"*")==0){cd.week=-1;}else{cd.week=atoi(ctoken[4]);}
 			cd.argv=&(ctoken[5]);
 			c_data[i]=cd;
-			//printf("%d ",c_data[i].min);
-			//printf("%s ",c_data[i].argv[1]);
 			i++;
-			free(ctoken);
 		}
 		row=i;
 		//return 0;
@@ -199,11 +131,7 @@ int main(){
 	else{
 		printf("ERROR: file can't be opened");
 	}
-
-	signal(SIGALRM,crontab_alarm_handler);
-	alarm(ALARM_TIME);
-	cron_run();
-	return 0;
 }
+
 
 
