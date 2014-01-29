@@ -97,10 +97,10 @@ int cron_run(){
 	return 1;
 }
 
-void file_read(){
+void file_read(char* file){
 
 	char* file_name=malloc(100);
-	strcpy(file_name,"cront.txt");
+	strcpy(file_name,file);
 	char cline[80]="";
 	int i=0;
 

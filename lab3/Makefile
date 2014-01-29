@@ -1,5 +1,5 @@
 all:
-	@gcc -w -o jash jash.c
+	@gcc -w -o jash jash.c crontab.c
 	@./jash
 
 

@@ -76,13 +76,6 @@ void main_han(int signum){
 }
 int main(int argc, char** argv){
 
-	file_read();
-	printf("%s\n",c_data[0].argv[0]);
-	signal(SIGALRM,crontab_alarm_handler);
-	alarm(ALARM_TIME);
-	cron_run();
-	return 0;
-
 	//Setting the signal interrupt to its default function. 
 	signal(SIGINT, main_han);
 	//Allocating space to store the previous commands.
@@ -249,7 +242,7 @@ char ** tokenize(char* input){
 Analyzes and runs appropriate command
 */
 bool analyze(char **tokens){
-	printf("in analyze\n");
+	//printf("in analyze\n");
 	char* command = (char *)malloc(1000*sizeof(char));
 	strcpy(command,tokens[0]);
 	pid_t pid;
@@ -294,6 +287,27 @@ bool analyze(char **tokens){
 		//  }
 		 parallel(tokens);
 		 return true;
+	}
+	else if(strcmp(command,"cron")==0){
+		file_read(tokens[1]);
+		//printf("%s\n",c_data[0].argv[0]);
+		
+		pid = fork();
+		if( pid < 0)
+		{
+			printf("Error occured");
+			return false;
+			exit(-1);
+		}
+		else if(pid == 0)
+		{
+			signal(SIGALRM,crontab_alarm_handler);
+			alarm(ALARM_TIME);
+			cron_run();
+		}
+		else{
+			childpid=pid;
+		}
 	}
 	else{
 		
