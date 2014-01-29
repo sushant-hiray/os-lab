@@ -1,7 +1,7 @@
 all:
-	@gcc -w -o jash jash.c crontab.c
-	@./jash
+	@gcc -w -o jash.out jash.c crontab.c
+	@./jash.out
 
 
 clean:
-	rm -rf *.o jash
+	@rm -rf *.out *.o
