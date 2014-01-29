@@ -4,4 +4,4 @@ all:
 
 
 clean:
-	rm -rf *o jash
+	rm -rf *.o jash

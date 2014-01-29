@@ -11,13 +11,7 @@
 #define MAXLINE 1000
 #define LINE 100
 #define DEBUG 0
-#define C_MIN 0
-#define C_HR 1
-#define C_DAY 2
-#define C_MONTH 3
-#define C_WDAY 4
-#define C_CMD 5
-
+#define ALARM_TIME 10
 /*
  * struct tm {
   int tm_sec;   // seconds of minutes from 0 to 61
@@ -32,7 +26,16 @@
 }
  * */
 
+typedef struct {
+	int min;
+	int hr;
+	int day;
+	int mon;
+	int week;
+	char** argv;
+} cron_data;
 
+cron_data* c_data;
 
 char ** tokenize(char* input){
 	int i;
@@ -87,7 +90,7 @@ char ** tokenize(char* input){
 	return tokens;
 }
 
-char schedule[10][100][1000];
+//char schedule[10][100][1000];
 
 int can_exec(int i){
 	time_t rawtime;
@@ -100,91 +103,106 @@ int can_exec(int i){
 	int mon_match=0;
 	int week_match=0;
 	int j;
-	for(j=0;strcmp(schedule[i][j],"")!=0;j++){
-		printf("%s ",schedule[i][j]);
-	}
-	//printf("%s\n",tm_s->tm_min);
-	if((strcmp(schedule[i][0],"*")==0) ||(atoi(schedule[i][0])==tm_s->tm_min)) {
+
+	// printf("%d %d %d %d %d\n",tm_s->tm_min,tm_s->tm_hour,tm_s->tm_mday,(tm_s->tm_mon)+1,tm_s->tm_wday);
+	// printf("%s %s %s %s %s\n",schedule[i][0],schedule[i][1],schedule[i][2],schedule[i][3],schedule[i][4]);
+	
+	if(c_data[i].min==-1 || c_data[i].min==tm_s->tm_min){
 		min_match=1;
 	}
-	if((strcmp(schedule[i],"*")==0) ||(atoi(schedule[i][1])==tm_s->tm_hour)) {
+	if(c_data[i].hr==-1 || c_data[i].hr==tm_s->tm_hour){
 		hr_match=1;
 	}
-	if((strcmp(schedule[i][2],"*")==0) ||(atoi(schedule[i][2])==tm_s->tm_mday)) {
+	if(c_data[i].day==-1 || c_data[i].day==tm_s->tm_mday) {
 		day_match=1;
 	}
-	if((strcmp(schedule[i][3],"*")==0) ||(atoi(schedule[i][3])==(tm_s->tm_mon)+1)) {
+	if(c_data[i].mon==-1 || c_data[i].mon==tm_s->tm_mon){
 		mon_match=1;
 	}
-	if((strcmp(schedule[i][4],"*")==0) ||(atoi(schedule[i][4])==tm_s->tm_wday)) {
+	if(c_data[i].week==-1 || c_data[i].week==tm_s->tm_wday){
 		week_match=1;
 	}
 	if((min_match==1) && (hr_match==1)&&(day_match==1)&&(mon_match==1)&&(week_match==1)){
 		return 1;
 	}
 	else{
-		printf("svdsfv%d%d%d%d%d",min_match,hr_match,day_match,mon_match,week_match);
+		printf("%d%d%d%d%d\n",min_match,hr_match,day_match,mon_match,week_match);
 		return 0;
 	}
 }
 
-
 char* cfile="cront.txt";
+int row;
+volatile sig_atomic_t flag=0;
+
+void crontab_alarm_handler(int signum){
+	if(signum==SIGALRM){
+		signal(SIGALRM, SIG_IGN);          /* ignore this signal       */
+		flag=1;
+		signal(SIGALRM, crontab_alarm_handler);     /* reinstall the handler    */
+		alarm(ALARM_TIME);
+	}
+}
 
 
+
+int cron_run(){
+	while(1){
+		if(flag==1){
+			int i;
+			for(i=0;i<row;i++){
+				if(can_exec(i)){
+					printf("can execute %s\n",c_data[i].argv[0]);
+					char **cmds = (char **)malloc(row * sizeof(char *));
+				}
+			}
+		}
+		flag=0;
+	}
+	return 1;
+}
 
 int main(){
-	int rows=10;
+
 	char* file_name=malloc(100);
 	strcpy(file_name,"cront.txt");
-	
-	//printf("%d\n",sizeof(char**));
-//	return 0;
-	//printf("%d\n",tm_struct->tm_min);
 	char cline[80]="";
-	//system("cat cront.txt");
+	int i=0;
+
+	c_data=malloc(10*sizeof(cron_data));
 	FILE* fp;
 	fp=fopen(file_name, "r");
-	int i=0;
 	
-	printf("%s",cfile);
-	//return 0;
-	//printf("%d\n",tm_struct->tm_min);
 	if(fp!=NULL){
 		while((fgets(cline, 80, fp) != NULL) && i<10){
-			//setting the timer
-			//tokenize the cron command
-			printf("%s\n",cline);
 			char** ctoken = tokenize(cline);
-			int j;
-			for(j=0;j<100&&ctoken[j]!=NULL;j++){
-				strcpy(schedule[i][j],ctoken[j]);
-			}
-			printf("%d",j);
-			strcpy(schedule[i][j],"");
-			
-			//strcpy(schedule[i][j],NULL);
-			printf("%d fnvlfnlv",i);
+			cron_data cd;
+			if(strcmp(ctoken[0],"*")==0){cd.min=-1;}else{cd.min=atoi(ctoken[0]);}
+			if(strcmp(ctoken[1],"*")==0){cd.hr=-1;}else{cd.hr=atoi(ctoken[1]);}
+			if(strcmp(ctoken[2],"*")==0){cd.day=-1;}else{cd.day=atoi(ctoken[2]);}
+			if(strcmp(ctoken[3],"*")==0){cd.mon=-1;}else{cd.mon=atoi(ctoken[3]);}
+			if(strcmp(ctoken[4],"*")==0){cd.week=-1;}else{cd.week=atoi(ctoken[4]);}
+			cd.argv=&(ctoken[5]);
+			c_data[i]=cd;
+			//printf("%d ",c_data[i].min);
+			//printf("%s ",c_data[i].argv[1]);
 			i++;
+			free(ctoken);
 		}
-		int row=i,j;
-		printf("%d  fnvlfnlv\n",i);
+		row=i;
+		//return 0;
+		int j;
 		fclose(fp);
-		for(i=0;i<row;i++){
-			for(j=0;strcmp(schedule[0][j],"")!=0;j++){
-				printf("%s \n",schedule[0][j]);
-			}
-		}
-		
-		printf("%s\n",schedule[0][5]);
-		int kk=can_exec(0);
-		printf("%d",kk);
+		free(file_name);
 	}
-	
+
 	else{
 		printf("ERROR: file can't be opened");
 	}
-	
+
+	signal(SIGALRM,crontab_alarm_handler);
+	alarm(ALARM_TIME);
+	cron_run();
 	return 0;
 }
 
