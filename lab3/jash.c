@@ -205,11 +205,13 @@ int main(int argc, char** argv){
 					}
 				
 				}
-				redirect_cmd(list1,list2);
+				//redirect_cmd(list1,list2);
+				redirect(tokens);
 
             }
             else if(j==2){
-            	printf("< \n");	
+            	printf("< \n");
+            	redirect(tokens);
             }
             else if(j==3){
             	printf(">> \n");
@@ -597,7 +599,9 @@ bool analyze2(char **tokens){
 
 
 
-
+/*
+runs the first part of the process in piping
+*/
 void runsource(int pfd[],char** cmd1) 
  /* run the first part of the pipeline, cmd1 */ 
  { 
@@ -620,6 +624,9 @@ void runsource(int pfd[],char** cmd1)
 } 
 
 
+/*
+runs the second part of the process in pipiing
+*/
 void rundest(int pfd[], char** cmd2) /* run the second part of the pipeline, cmd2 */ 
 { 	
 	int pid; 
@@ -639,6 +646,55 @@ void rundest(int pfd[], char** cmd2) /* run the second part of the pipeline, cmd
 
 
 
+
+void redirect(char** tokens){
+
+	int fd1, fd2;
+	int dummy;
+	char **cmd = (char **)malloc(1000 * sizeof(char *));
+	char *inpfile =(char *)malloc(1000*sizeof(char));
+	char *outfile =(char *)malloc(1000*sizeof(char));
+	int in=0,out=0;
+	parse(tokens,cmd,inpfile,outfile,&in,&out);
+
+	if (fork() == 0) {
+	if(in){
+		  printf("infile: %s\n",inpfile);
+	
+		  fd1 = open(inpfile, O_RDONLY);
+		  if (fd1 < 0) {
+		    perror("catf1f2: f1");
+		    exit(1);
+		  }
+		
+		  if (dup2(fd1, 0) != 0) {
+		    perror("catf1f2: dup2(f1, 0)");
+		    exit(1);
+		  }
+		  close(fd1);
+	}
+	if(out){
+		  printf("outfile: %s\n",outfile);
+		  fd2 = open(outfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+		  if (fd2 < 0) {
+		    perror("catf1f2: f2");
+		    exit(2);
+		  }
+		
+		  if (dup2(fd2, 1) != 1) {
+		    perror("catf1f2: dup2(f2, 1)");
+		    exit(1);
+		  }
+		  close(fd2);
+	 }
+
+	  execvp(cmd[0],cmd);
+	  perror("execvp)");
+	  exit(1);  
+	} else {
+	  wait(&dummy);
+	}
+}
 
 
 void redirect_cmd(char** cmd, char** file) {
@@ -671,14 +727,6 @@ void redirect_cmd(char** cmd, char** file) {
     while ((count = read(0, &c, 1)) > 0)
       write(fd, &c, 1); // Write to file.
 
-    // Okay, so this is a bit contrived, but when I didn't have any kind of exec
-    // function call here, I got my SarahShell prompt repeated over and over
-    // again on the Multilab machines, I think because of this crazy child
-    // process or something.  When I put this execlp here with the useless call
-    // to echo, however, that looping stops and you can actually enter things
-    // at the prompt again, hurray!
-    execlp("echo", "echo", NULL);
-
   // child process #2
   } else if ((pid = fork()) == 0) {
     dup2(fds[1], 1);
@@ -697,3 +745,27 @@ void redirect_cmd(char** cmd, char** file) {
     close(fds[1]);
   }
 }
+
+void parse(char** tokens, char** cmd, char*inp, char* out,int *in, int *o){
+	int i=0;
+	flag =0;
+	char *token = (char *)malloc(1000*sizeof(char));
+	while(tokens[i]!=NULL){
+		if(flag==0){
+			cmd[i] = (char*)malloc(sizeof(token));
+			strcpy(cmd[i],tokens[i]);
+			i++;
+		}
+		if(strcmp(tokens[i],">")==0){
+			*o=1;
+			strcpy(out,tokens[i+1]);
+			i=i+2;flag=1;
+		}
+		else if(strcmp(tokens[i],"<")==0){
+			*in=1;
+			strcpy(inp,tokens[i+1]);
+			i=i+2;flag=1;
+		}
+	}
+}
+
