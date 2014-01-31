@@ -1,0 +1,15 @@
+110050035	Sanchit Garg
+110050009	Sushant Hiray
+
+Following are the commands which jash supports
+	-> commands which can be run using execvp for eg: ls, mkdir, cat, git,man etc
+	-> run <filename>
+	-> parallel <c1> ::: <c2> ::: ... ::: <cn>
+	-> cd changes the context to the given directory
+	-> Supports piping of commands for eg: ls | grep READ, cat jash.c | less
+	-> Supports i/o redirection for eg: ./a.out < temp > outfile
+	-> Supports complete exit with the command: exit
+	-> If jash is waiting for an input, Ctrl+D will exit jash and kills all its processes
+	-> Supports Ctrl+C to kill processes
+	
+
