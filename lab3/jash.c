@@ -64,6 +64,7 @@ void main_han(int signum){
 	if(signum==SIGINT){
 		fflush(stdout);
 		if(childpid==-1){
+			//printf("in childpid=-1 handler id: %d\n", getpid());
 			fflush(stdout);
 			printf("\n$ ");
 			fflush(stdout);
@@ -71,7 +72,7 @@ void main_han(int signum){
 		}
 		else{
 			kill(childpid,SIGKILL);
-			printf("\n");
+			//printf("in handler id: %d\n", getpid());
 			childpid=-1;
 			fflush(stdout);
 		}	
@@ -224,6 +225,7 @@ void parallel(char** input){
 	int i,status;
 	pid_t pid;
 	char *token = (char *)malloc(1000*sizeof(char));
+	kill(getpid(),SIGINT);
 	for(i=0;input[i]!=NULL;i++){
 		if(strcmp(input[i],"parallel")==0){
 			continue;
@@ -256,8 +258,19 @@ void parallel(char** input){
 				return;
 			}
 			else{
-				
-				continue;
+				while(1){
+					int status;
+					int p=wait(&status);
+					if(p==-1){
+						if(errno==ECHILD){
+							printf("parallel %d : No more child waiting can now exit\n", getpid());
+							break;
+						}
+					}
+					else{
+						printf("parallel %d : child with pid %d collected\n", getpid(), pid);
+					}
+				}
 			}
 
 			free(tokenlist);
@@ -265,7 +278,7 @@ void parallel(char** input){
 	}
 
 	free(token);
-	kill(getpid(),SIGINT);
+	//kill(getpid(),SIGINT);
 	return;
 }
 
@@ -425,12 +438,36 @@ bool analyze(char **tokens){
 		
 	}
 	else if(strcmp(command,"exit")==0){
+		killpg(getpgid(0),SIGINT);
 		exit(0);
 		return true;
 	}
 	else if(strcmp(command,"parallel")==0){
-		 int i,j;
-		 parallel(tokens);
+		int i,j;
+		int pos;
+		int check=checkredirect(tokens,&pos);
+		pid = fork();
+		if( pid < 0)
+		{
+			printf("Error occured");
+			return false;
+			exit(-1);
+		}
+		else if(pid == 0)
+		{
+			if(check==5){
+				tokens[pos]=NULL;
+			}
+			parallel(tokens);
+			exit(0);
+			//return true;
+		}
+		else{
+			childpid=pid;
+			if(check!=5){
+				waitpid(pid,&status,0);	
+			}
+		}
 		 return true;
 	}
 	else if(strcmp(command,"cron")==0){
@@ -596,7 +633,7 @@ void runsource(int pfd[],char** cmd1)
 	 		 /* this end of the pipe becomes the standard output */ 
 	 		 close(pfd[0]); 
 	 		 /* this process don't need the other end */ 
-	 		 execvp(cmd1[0], cmd1); 
+	 		 analyze2(cmd1); 
 	 		 /* run the command */ 
 	 		 perror(cmd1[0]); /* it failed! */ 
 	 	default: /* parent does nothing */ 
@@ -617,7 +654,7 @@ void rundest(int pfd[], char** cmd2) /* run the second part of the pipeline, cmd
 		case 0: /* child */ 
 			dup2(pfd[0], 0); /* this end of the pipe becomes the standard input */ 
 			close(pfd[1]); /* this process doesn't need the other end */ 
-			execvp(cmd2[0], cmd2); /* run the command */ 
+			analyze2(cmd2); 
 			perror(cmd2[0]); /* it failed! */ 
 			exit(0);
 		default: /* parent does nothing */ 
