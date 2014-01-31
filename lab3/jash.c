@@ -187,7 +187,8 @@ int main(int argc, char** argv){
             	redirect(tokens);
             }
             else if(j==3){
-            	printf(">> \n");
+            	printf("Here\n");
+            	redirect(tokens);
             }
             else if(j==4){
             	printf("<< \n");
@@ -497,7 +498,7 @@ bool analyze(char **tokens){
 		}
 	}
 
-	else if(check==1 || check==2 || check==4){
+	else if(check==1 || check==2 || check==3 || check == 4){
 		redirect(tokens);
 	}
 	else{
@@ -702,6 +703,7 @@ void redirect(char** tokens){
 	}
 	if(out){
 		  printf("outfile: %s\n",outfile);
+		  fflush(stdout);
 		  if(mode==0){
 		  		//file create MODE
 			  fd2 = open(outfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
