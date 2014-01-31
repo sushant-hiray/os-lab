@@ -64,17 +64,18 @@ void main_han(int signum){
 	if(signum==SIGINT){
 		fflush(stdout);
 		if(childpid==-1){
-			//printf("in childpid=-1 handler id: %d\n", getpid());
+			printf("in childpid=-1 handler id: %d , %d\n", getpid(),getppid());
 			fflush(stdout);
-			printf("\n$ ");
+			printf("\n$");
 			fflush(stdout);
 			return;
 		}
 		else{
-			kill(childpid,SIGKILL);
-			//printf("in handler id: %d\n", getpid());
-			childpid=-1;
+			printf("in handler id: %d\n", getpid());
 			fflush(stdout);
+			kill(childpid,SIGKILL);
+			childpid=-1;
+			
 		}	
 		return;
 	}
@@ -113,6 +114,7 @@ int main(int argc, char** argv){
 		//Checking for EOF
 		if (in == NULL){
 			if (DEBUG) printf("EOF found\n");
+			killpg(getpgid(0),SIGINT);
 			exit(0);
 		}
 
@@ -403,7 +405,8 @@ bool analyze(char **tokens){
 	pid_t pid;
 	int status;
 	bool flag=true;
-	
+	int pos;
+	int check=checkredirect(tokens,&pos);
 	if(strcmp(command,"cd")==0){
 		if(chdir(tokens[1])!=0){
 			printf("ERROR: %s: No such directory\n", tokens[1]);
@@ -411,8 +414,6 @@ bool analyze(char **tokens){
 		}
 	}
 	else if(strcmp(command,"run")==0){
-		int pos;
-		int check=checkredirect(tokens,&pos);
 		pid = fork();
 		if( pid < 0)
 		{
@@ -430,8 +431,9 @@ bool analyze(char **tokens){
 			//return true;
 		}
 		else{
-			childpid=pid;
+			
 			if(check!=5){
+				childpid=pid;
 				waitpid(pid,&status,0);	
 			}
 		}
@@ -445,8 +447,6 @@ bool analyze(char **tokens){
 	}
 	else if(strcmp(command,"parallel")==0){
 		int i,j;
-		int pos;
-		int check=checkredirect(tokens,&pos);
 		pid = fork();
 		if( pid < 0)
 		{
@@ -464,8 +464,8 @@ bool analyze(char **tokens){
 			//return true;
 		}
 		else{
-			childpid=pid;
 			if(check!=5){
+				childpid=pid;
 				waitpid(pid,&status,0);	
 			}
 		}
@@ -473,7 +473,6 @@ bool analyze(char **tokens){
 	}
 	else if(strcmp(command,"cron")==0){
 		file_read(tokens[1]);
-		
 		pid = fork();
 		if( pid < 0)
 		{
@@ -483,17 +482,25 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
+			if(check==5){
+				tokens[pos]=NULL;
+			}
 			signal(SIGALRM,crontab_alarm_handler);
 			alarm(ALARM_TIME);
 			cron_run();
 		}
 		else{
-			childpid=pid;
+			if(check!=5){
+				childpid=pid;
+				waitpid(pid,&status,0);	
+			}
 		}
 	}
+
+	else if(check==1 || check==2 || check==4){
+		redirect(tokens);
+	}
 	else{
-		int pos;
-		int check=checkredirect(tokens,&pos);
 		pid = fork();
 		if( pid < 0)
 		{
@@ -515,8 +522,9 @@ bool analyze(char **tokens){
 			}
 		}
 		else{
-			childpid=pid;
+			
 			if(check!=5){
+				childpid=pid;
 				waitpid(pid,&status,0);	
 			}
 		}
