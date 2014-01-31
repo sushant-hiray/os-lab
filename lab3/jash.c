@@ -119,8 +119,45 @@ int main(int argc, char** argv){
 		for(i=0;tokens[i]!=NULL;i++){
 		// 	printf("%s\n", tokens[i]);
 		 }
-		 if(i!=0)
-			analyze(tokens);
+		 if(i!=0){
+		 int j=checkpipe(tokens);
+			if(j==-1){
+             analyze(tokens);
+            }
+            else{
+                //piping condition
+                printf("pipe\n");
+                char **list1;
+                char **list2;
+                int tokenNo=0;
+ 				list1 = (char**)malloc(MAXLINE*sizeof(char**));
+ 				list2 = (char**)malloc(MAXLINE*sizeof(char**));
+ 				int k=0;
+ 				char *token = (char *)malloc(1000*sizeof(char));
+ 				while(input[k]!=NULL){
+					if(strcmp(input[k],"|")==0){
+						break;
+					}
+					else if(k<j){
+						list1[tokenNo] = (char*)malloc(sizeof(token));
+						strcpy(list1[tokenNo],tokens[k]);
+						tokenNo++;
+						k++;
+					}
+					else if(k==j){
+						tokenNo=0;
+					}
+					else{
+						list2[tokenNo] = (char*)malloc(sizeof(token));
+						strcpy(list2[tokenNo],tokens[k]);
+						tokenNo++;
+						k++;
+					}
+				
+				}
+				my_pipe(list1,list2);
+            }
+       }
 	}
   
   
@@ -184,6 +221,32 @@ void parallel(char** input){
 	return;
 }
 
+void my_pipe(char** inp1,char** inp2){
+    int fds[2]; // file descriptors
+    pipe(fds);
+    pid_t pid;
+
+    //child process 1
+    if(fork()==0){
+        dup2(fds[0],0);
+        close(fds[1]);
+        execvp(inp2[0],inp2);
+        perror("execvp failed");
+
+    }
+    else if((pid=fork())==0){
+        dup2(fds[1],1);
+        close(fds[0]);
+        execvp(inp1[0],inp1);
+        perror("execvp failed");
+    }
+    else{
+        waitpid(pid,NULL,0);
+    }
+
+return;
+}
+
 /*the tokenizer function takes a string of chars and forms tokens out of it*/
 char ** tokenize(char* input){
 	int i;
@@ -236,6 +299,17 @@ char ** tokenize(char* input){
 	}
 	
 	return tokens;
+}
+
+int checkpipe(char** tokens){
+    int i;
+    for(i=0;tokens[i]!=NULL;i++){
+        if(strcmp(tokens[i],"|")==0){
+            return i;
+        }
+    }
+  
+    return -1;
 }
 
 /*
