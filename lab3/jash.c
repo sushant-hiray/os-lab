@@ -176,41 +176,11 @@ int main(int argc, char** argv){
 				free(list2);
             }
             else if(j==1){
-            	printf("> \n");
-
-            	//> condition
-                char **list1;
-                char **list2;
-                int tokenNo=0;
- 				list1 = (char**)malloc(MAXLINE*sizeof(char**));
- 				list2 = (char**)malloc(MAXLINE*sizeof(char**));
- 				int k=0;
- 				char *token = (char *)malloc(1000*sizeof(char));
- 				while(tokens[k]!=NULL){
-					if(k<pos){
-						list1[tokenNo] = (char*)malloc(sizeof(token));
-						strcpy(list1[tokenNo],tokens[k]);
-						tokenNo++;
-						k++;
-					}
-					else if(k==pos){
-						tokenNo=0;
-						k++;
-					}
-					else{
-						list2[tokenNo] = (char*)malloc(sizeof(token));
-						strcpy(list2[tokenNo],tokens[k]);
-						tokenNo++;
-						k++;	
-					}
-				
-				}
 				//redirect_cmd(list1,list2);
 				redirect(tokens);
 
             }
             else if(j==2){
-            	printf("< \n");
             	redirect(tokens);
             }
             else if(j==3){
@@ -605,7 +575,7 @@ runs the first part of the process in piping
 void runsource(int pfd[],char** cmd1) 
  /* run the first part of the pipeline, cmd1 */ 
  { 
-	 int pid; /* we don't use the process ID here, but you may wnat to print it for debugging */ 
+	 int pid; 
 	 switch (pid = fork()) 
 	 { 
 	 	case 0:
@@ -646,7 +616,7 @@ void rundest(int pfd[], char** cmd2) /* run the second part of the pipeline, cmd
 
 
 
-
+//handles i/o redirection
 void redirect(char** tokens){
 
 	int fd1, fd2;
@@ -663,12 +633,12 @@ void redirect(char** tokens){
 	
 		  fd1 = open(inpfile, O_RDONLY);
 		  if (fd1 < 0) {
-		    perror("catf1f2: f1");
+		    perror("infile doesnt exist: %s",inpfile);
 		    exit(1);
 		  }
 		
 		  if (dup2(fd1, 0) != 0) {
-		    perror("catf1f2: dup2(f1, 0)");
+		    perror("dup2(f1, 0)");
 		    exit(1);
 		  }
 		  close(fd1);
@@ -677,75 +647,30 @@ void redirect(char** tokens){
 		  printf("outfile: %s\n",outfile);
 		  fd2 = open(outfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
 		  if (fd2 < 0) {
-		    perror("catf1f2: f2");
+		    perror("outfile doesnt exist: %s",outfile);
 		    exit(2);
 		  }
 		
 		  if (dup2(fd2, 1) != 1) {
-		    perror("catf1f2: dup2(f2, 1)");
+		    perror("dup2(f2, 1)");
 		    exit(1);
 		  }
 		  close(fd2);
 	 }
 
 	  execvp(cmd[0],cmd);
-	  perror("execvp)");
+	  perror("execvp error: %s,"cmd[0]);
 	  exit(1);  
-	} else {
+	} 
+	else {
 	  wait(&dummy);
-	}
+	  free(cmd);	
+	  free(inpfile);
+	  free(outfile);
+	 }
 }
 
-
-void redirect_cmd(char** cmd, char** file) {
-  int fds[2]; // file descriptors
-  int count;  // used for reading from stdout
-  int fd;     // single file descriptor
-  char c;     // used for writing and reading a character at a time
-  pid_t pid;  // will hold process ID; used with fork()
-
-  pipe(fds);
-
-  // child process #1
-  if (fork() == 0) {
-    // Thanks to http://linux.die.net/man/2/open for showing which headers
-    // need to be included to use this function and its flags.
-    fd = open(file[0], O_RDWR | O_CREAT, 0666);
-
-    // open() returns a -1 if an error occurred
-    if (fd < 0) {
-      printf("Error: %s\n", strerror(errno));
-      return;
-    }
-
-    dup2(fds[0], 0);
-
-    // Don't need stdout end of pipe.
-    close(fds[1]);
-
-    // Read from stdout...
-    while ((count = read(0, &c, 1)) > 0)
-      write(fd, &c, 1); // Write to file.
-
-  // child process #2
-  } else if ((pid = fork()) == 0) {
-    dup2(fds[1], 1);
-
-    // Don't need stdin end of pipe.
-    close(fds[0]);
-
-    // Output contents of the given file to stdout.
-    execvp(cmd[0], cmd);
-    perror("execvp failed");
-
-  // parent process
-  } else {
-    waitpid(pid, NULL, 0);
-    close(fds[0]);
-    close(fds[1]);
-  }
-}
-
+//parses the tokens to find the inputfile and outfile
 void parse(char** tokens, char** cmd, char*inp, char* out,int *in, int *o){
 	int i=0;
 	flag =0;
@@ -767,5 +692,6 @@ void parse(char** tokens, char** cmd, char*inp, char* out,int *in, int *o){
 			i=i+2;flag=1;
 		}
 	}
+	free(token);
 }
 
