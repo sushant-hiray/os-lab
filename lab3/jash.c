@@ -189,8 +189,8 @@ int main(int argc, char** argv){
             else if(j==4){
             	printf("<< \n");
             }
-            else if(j==5){
-            	printf("& \n");
+            else{
+            	analyze(tokens);
             }
        }
 	}
@@ -397,7 +397,8 @@ bool analyze(char **tokens){
 		}
 	}
 	else if(strcmp(command,"run")==0){
-		
+		int pos;
+		int check=checkredirect(tokens,&pos);
 		pid = fork();
 		if( pid < 0)
 		{
@@ -407,13 +408,18 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
+			if(check==5){
+				tokens[pos]=NULL;
+			}
 			run(tokens[1]);
 			exit(0);
 			//return true;
 		}
 		else{
 			childpid=pid;
-			waitpid(pid,&status,0);
+			if(check!=5){
+				waitpid(pid,&status,0);	
+			}
 		}
 		
 		
@@ -423,16 +429,12 @@ bool analyze(char **tokens){
 		return true;
 	}
 	else if(strcmp(command,"parallel")==0){
-		int i,j;
-		// for(i=0;tokens[i]!=NULL;i++){
-		//  	printf("%s\n", tokens[i]);
-		//  }
+		 int i,j;
 		 parallel(tokens);
 		 return true;
 	}
 	else if(strcmp(command,"cron")==0){
 		file_read(tokens[1]);
-		//printf("%s\n",c_data[0].argv[0]);
 		
 		pid = fork();
 		if( pid < 0)
@@ -452,7 +454,8 @@ bool analyze(char **tokens){
 		}
 	}
 	else{
-		
+		int pos;
+		int check=checkredirect(tokens,&pos);
 		pid = fork();
 		if( pid < 0)
 		{
@@ -462,6 +465,10 @@ bool analyze(char **tokens){
 		}
 		else if(pid == 0)
 		{
+			if(check==5){
+			tokens[pos]=NULL;
+			}
+
 			if(execvp(*tokens,tokens)==-1){
 				char *error_str = strerror(errno);
 				printf("ERROR:%s %s\n",tokens[0],error_str);
@@ -471,7 +478,9 @@ bool analyze(char **tokens){
 		}
 		else{
 			childpid=pid;
-			waitpid(pid,&status,0);
+			if(check!=5){
+				waitpid(pid,&status,0);	
+			}
 		}
 	}
 	free(command);
@@ -554,9 +563,6 @@ bool analyze2(char **tokens){
 	}
 	else if(strcmp(command,"parallel")==0){
 		int i,j;
-		// for(i=0;tokens[i]!=NULL;i++){
-		//  	printf("%s\n", tokens[i]);
-		//  }
 		 parallel(tokens);
 		 return true;
 	}
