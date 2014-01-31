@@ -267,7 +267,8 @@ bool analyze(char **tokens){
 		else if(pid == 0)
 		{
 			run(tokens[1]);
-			return true;
+			exit(0);
+			//return true;
 		}
 		else{
 			childpid=pid;
@@ -402,23 +403,9 @@ bool analyze2(char **tokens){
 	}
 	else if(strcmp(command,"run")==0){
 		
-		pid = fork();
-		if( pid < 0)
-		{
-			printf("Error occured");
-			return false;
-			exit(-1);
-		}
-		else if(pid == 0)
-		{
 			run(tokens[1]);
-			return true;
-		}
-		else{
-			childpid=pid;
-		}
-		
-		
+			return true;		
+
 	}
 	else if(strcmp(command,"exit")==0){
 		exit(0);
@@ -434,24 +421,11 @@ bool analyze2(char **tokens){
 	}
 	else{
 		
-		pid = fork();
-		if( pid < 0)
-		{
-			printf("Error occured");
+		if(execvp(*tokens,tokens)==-1){
+			char *error_str = strerror(errno);
+			printf("ERROR:%s %s\n",tokens[0],error_str);
 			return false;
-			exit(-1);
-		}
-		else if(pid == 0)
-		{
-			if(execvp(*tokens,tokens)==-1){
-				char *error_str = strerror(errno);
-				printf("ERROR:%s %s\n",tokens[0],error_str);
-				return false;
-				exit(0);
-			}
-		}
-		else{
-			childpid=pid;
+			exit(0);
 		}
 	}
 	free(command);
