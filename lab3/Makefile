@@ -1,5 +1,5 @@
 all:
-	@gcc -w -o jash.out jash.c crontab.c
+	@gcc -w -o jash.out jash.c crontab.c isvalid.c
 	@./jash.out
 
 
