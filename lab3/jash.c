@@ -205,6 +205,8 @@ int main(int argc, char** argv){
 	return 0;
 }
 
+//prints the list of char* 
+//used for debuugging
 void printlist(char** a){
 	int i=0;
 	while(a[i]!=NULL){
@@ -214,6 +216,8 @@ void printlist(char** a){
 	printf("\n");
 }
 
+
+//takes the tokenized input and runs the processes in parallel
 void parallel(char** input){
 	int tokenIndex = 0;
 	int tokenNo = 0;
@@ -320,6 +324,8 @@ char ** tokenize(char* input){
 	return tokens;
 }
 
+
+//checks if a pipe is present in the tokens
 int checkpipe(char** tokens){
     int i;
     for(i=0;tokens[i]!=NULL;i++){
@@ -459,8 +465,8 @@ bool analyze(char **tokens){
 			if(execvp(*tokens,tokens)==-1){
 				char *error_str = strerror(errno);
 				printf("ERROR:%s %s\n",tokens[0],error_str);
-				return false;
 				exit(0);
+				return false;
 			}
 		}
 		else{
@@ -559,8 +565,8 @@ bool analyze2(char **tokens){
 		if(execvp(*tokens,tokens)==-1){
 			char *error_str = strerror(errno);
 			printf("ERROR:%s %s\n",tokens[0],error_str);
-			return false;
 			exit(0);
+			return false;
 		}
 	}
 	free(command);
@@ -624,16 +630,15 @@ void redirect(char** tokens){
 	char **cmd = (char **)malloc(1000 * sizeof(char *));
 	char *inpfile =(char *)malloc(1000*sizeof(char));
 	char *outfile =(char *)malloc(1000*sizeof(char));
-	int in=0,out=0;
-	parse(tokens,cmd,inpfile,outfile,&in,&out);
-
+	int in=0,out=0,mode=0;
+	parse(tokens,cmd,inpfile,outfile,&in,&out,&mode);
 	if (fork() == 0) {
 	if(in){
 		  printf("infile: %s\n",inpfile);
 	
 		  fd1 = open(inpfile, O_RDONLY);
 		  if (fd1 < 0) {
-		    perror("infile doesnt exist: %s",inpfile);
+		    perror("infile doesnt exist");
 		    exit(1);
 		  }
 		
@@ -645,21 +650,42 @@ void redirect(char** tokens){
 	}
 	if(out){
 		  printf("outfile: %s\n",outfile);
-		  fd2 = open(outfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
-		  if (fd2 < 0) {
-		    perror("outfile doesnt exist: %s",outfile);
-		    exit(2);
+		  if(mode==0){
+		  		//file create MODE
+			  fd2 = open(outfile, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+			  if (fd2 < 0) {
+			    perror("couldn't create file");
+			    exit(2);
+			  }
+			
+			  if (dup2(fd2, 1) != 1) {
+			    perror("dup2(f2, 1)");
+			    exit(1);
+			  }
+			  close(fd2);
 		  }
-		
-		  if (dup2(fd2, 1) != 1) {
-		    perror("dup2(f2, 1)");
-		    exit(1);
+		  else if(mode==1){
+		  	//file append mode
+		  	  fd2 = open(outfile, O_WRONLY | O_APPEND);
+			  if (fd2 < 0) {
+			    perror("outfile : doesnt exist");
+			    exit(2);
+			  }
+			
+			  if (dup2(fd2, 1) != 1) {
+			    perror("dup2(f2, 1)");
+			    exit(1);
+			  }
+			  close(fd2);
+
 		  }
-		  close(fd2);
+		  else{
+		  	printf("Oops! MODE Error, call the administrator!\n");
+		  }
 	 }
 
 	  execvp(cmd[0],cmd);
-	  perror("execvp error: %s,"cmd[0]);
+	  perror("execvp error");
 	  exit(1);  
 	} 
 	else {
@@ -671,7 +697,7 @@ void redirect(char** tokens){
 }
 
 //parses the tokens to find the inputfile and outfile
-void parse(char** tokens, char** cmd, char*inp, char* out,int *in, int *o){
+void parse(char** tokens, char** cmd, char*inp, char* out,int *in, int *o,int *mode){
 	int i=0;
 	flag =0;
 	char *token = (char *)malloc(1000*sizeof(char));
@@ -684,7 +710,12 @@ void parse(char** tokens, char** cmd, char*inp, char* out,int *in, int *o){
 		if(strcmp(tokens[i],">")==0){
 			*o=1;
 			strcpy(out,tokens[i+1]);
-			i=i+2;flag=1;
+			i=i+2;flag=1;*mode=0;
+		}
+		else if(strcmp(tokens[i],">>")==0){
+			*o=1;
+			strcpy(out,tokens[i+1]);
+			i=i+2;flag=1;*mode=1;
 		}
 		else if(strcmp(tokens[i],"<")==0){
 			*in=1;
