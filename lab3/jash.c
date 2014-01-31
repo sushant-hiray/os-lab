@@ -121,7 +121,7 @@ int main(int argc, char** argv){
 		// 	printf("%s\n", tokens[i]);
 		 }
 		 if(i!=0){
-		 int j=checkpipe(tokens);
+		 	int j=checkpipe(tokens);
 			if(j==-1){
              analyze(tokens);
             }
@@ -160,6 +160,10 @@ int main(int argc, char** argv){
 				rundest(fd,list2); 
 				close(fd[0]); 
 				close(fd[1]);
+
+				while ((pid = wait(&status)) != -1) 
+					/* pick up all the dead children */ 
+					fprintf(stderr, "process %d exits with %d\n", pid, WEXITSTATUS(status));
 				free(token);
 				free(list1);
 				free(list2);
