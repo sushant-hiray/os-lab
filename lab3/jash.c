@@ -6,7 +6,7 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <errno.h>
-
+#include <fcntl.h>
 
 #define MAXLINE 1000
 #define DEBUG 0
@@ -39,6 +39,9 @@ bool fexists(char*);
 void parallel(char**);
 void runsource(int[],char**);
 void rundest(int[],char**);
+int checkredirect(char** ,int* );
+void redirect_cmd(char** , char** );
+
 pid_t childpid=-1;
 
 /* 
@@ -75,6 +78,8 @@ void main_han(int signum){
 		return;
 	}
 }
+
+/* main finction */
 int main(int argc, char** argv){
 
 	//Setting the signal interrupt to its default function. 
@@ -121,11 +126,13 @@ int main(int argc, char** argv){
 		// 	printf("%s\n", tokens[i]);
 		 }
 		 if(i!=0){
-		 	int j=checkpipe(tokens);
+		 	int pos=0;
+
+		 	int j=checkredirect(tokens,&pos);
 			if(j==-1){
              analyze(tokens);
             }
-            else{
+            else if(j==0){
                 //piping condition
                 char **list1;
                 char **list2;
@@ -135,13 +142,13 @@ int main(int argc, char** argv){
  				int k=0;
  				char *token = (char *)malloc(1000*sizeof(char));
  				while(tokens[k]!=NULL){
-					if(k<j){
+					if(k<pos){
 						list1[tokenNo] = (char*)malloc(sizeof(token));
 						strcpy(list1[tokenNo],tokens[k]);
 						tokenNo++;
 						k++;
 					}
-					else if(k==j){
+					else if(k==pos){
 						tokenNo=0;
 						k++;
 					}
@@ -167,6 +174,51 @@ int main(int argc, char** argv){
 				free(token);
 				free(list1);
 				free(list2);
+            }
+            else if(j==1){
+            	printf("> \n");
+
+            	//> condition
+                char **list1;
+                char **list2;
+                int tokenNo=0;
+ 				list1 = (char**)malloc(MAXLINE*sizeof(char**));
+ 				list2 = (char**)malloc(MAXLINE*sizeof(char**));
+ 				int k=0;
+ 				char *token = (char *)malloc(1000*sizeof(char));
+ 				while(tokens[k]!=NULL){
+					if(k<pos){
+						list1[tokenNo] = (char*)malloc(sizeof(token));
+						strcpy(list1[tokenNo],tokens[k]);
+						tokenNo++;
+						k++;
+					}
+					else if(k==pos){
+						tokenNo=0;
+						k++;
+					}
+					else{
+						list2[tokenNo] = (char*)malloc(sizeof(token));
+						strcpy(list2[tokenNo],tokens[k]);
+						tokenNo++;
+						k++;	
+					}
+				
+				}
+				redirect_cmd(list1,list2);
+
+            }
+            else if(j==2){
+            	printf("< \n");	
+            }
+            else if(j==3){
+            	printf(">> \n");
+            }
+            else if(j==4){
+            	printf("<< \n");
+            }
+            else if(j==5){
+            	printf("& \n");
             }
        }
 	}
@@ -241,31 +293,6 @@ void parallel(char** input){
 	return;
 }
 
-void my_pipe(char** inp1,char** inp2){
-    int fds[2]; // file descriptors
-    pipe(fds);
-    pid_t pid;
-
-    //child process 1
-    if(fork()==0){
-        dup2(fds[1],1);
-        close(fds[0]);
-        execvp(inp1[0],inp1);
-        perror("execvp failed");
-
-    }
-    else if((pid=fork())==0){
-        dup2(fds[0],0);
-        close(fds[1]);
-        execvp(inp1[1],inp1);
-        perror("execvp failed");
-    }
-    else{
-        waitpid(pid,NULL,0);
-    }
-
-return;
-}
 
 /*the tokenizer function takes a string of chars and forms tokens out of it*/
 char ** tokenize(char* input){
@@ -332,6 +359,48 @@ int checkpipe(char** tokens){
     return -1;
 }
 
+
+/* 
+0 pipe, 
+1 > 
+2 <, 
+3 >> 
+4 <<
+5 &
+ELSE -1
+*/
+
+int checkredirect(char** tokens,int *pos){
+	int i;
+    for(i=0;tokens[i]!=NULL;i++){
+        if(strcmp(tokens[i],"|")==0){
+            *pos=i;
+            return 0;
+        }
+        else if(strcmp(tokens[i],">")==0){
+        	*pos=i;
+            return 1;
+        }
+        else if(strcmp(tokens[i],"<")==0){
+        	*pos=i;
+            return 2;
+        }
+        else if(strcmp(tokens[i],">>")==0){
+        	*pos=i;
+            return 3;
+        }
+        else if(strcmp(tokens[i],"<<")==0){
+        	*pos=i;
+            return 4;
+        }
+        else if(strcmp(tokens[i],"&")==0){
+        	*pos=i;
+            return 5;
+        }
+    }
+  
+    return -1;
+}
 /*
 Analyzes and runs appropriate command
 */
@@ -567,3 +636,64 @@ void rundest(int pfd[], char** cmd2) /* run the second part of the pipeline, cmd
 		case -1: perror("fork"); exit(1); 
 	} 
 } 
+
+
+
+
+
+void redirect_cmd(char** cmd, char** file) {
+  int fds[2]; // file descriptors
+  int count;  // used for reading from stdout
+  int fd;     // single file descriptor
+  char c;     // used for writing and reading a character at a time
+  pid_t pid;  // will hold process ID; used with fork()
+
+  pipe(fds);
+
+  // child process #1
+  if (fork() == 0) {
+    // Thanks to http://linux.die.net/man/2/open for showing which headers
+    // need to be included to use this function and its flags.
+    fd = open(file[0], O_RDWR | O_CREAT, 0666);
+
+    // open() returns a -1 if an error occurred
+    if (fd < 0) {
+      printf("Error: %s\n", strerror(errno));
+      return;
+    }
+
+    dup2(fds[0], 0);
+
+    // Don't need stdout end of pipe.
+    close(fds[1]);
+
+    // Read from stdout...
+    while ((count = read(0, &c, 1)) > 0)
+      write(fd, &c, 1); // Write to file.
+
+    // Okay, so this is a bit contrived, but when I didn't have any kind of exec
+    // function call here, I got my SarahShell prompt repeated over and over
+    // again on the Multilab machines, I think because of this crazy child
+    // process or something.  When I put this execlp here with the useless call
+    // to echo, however, that looping stops and you can actually enter things
+    // at the prompt again, hurray!
+    execlp("echo", "echo", NULL);
+
+  // child process #2
+  } else if ((pid = fork()) == 0) {
+    dup2(fds[1], 1);
+
+    // Don't need stdin end of pipe.
+    close(fds[0]);
+
+    // Output contents of the given file to stdout.
+    execvp(cmd[0], cmd);
+    perror("execvp failed");
+
+  // parent process
+  } else {
+    waitpid(pid, NULL, 0);
+    close(fds[0]);
+    close(fds[1]);
+  }
+}
