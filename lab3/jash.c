@@ -37,7 +37,8 @@ bool analyze2(char**);
 void run(char*);
 bool fexists(char*);
 void parallel(char**);
-
+void runsource(int[],char**);
+void rundest(int[],char**);
 pid_t childpid=-1;
 
 /* 
@@ -126,7 +127,6 @@ int main(int argc, char** argv){
             }
             else{
                 //piping condition
-                printf("pipe\n");
                 char **list1;
                 char **list2;
                 int tokenNo=0;
@@ -134,11 +134,8 @@ int main(int argc, char** argv){
  				list2 = (char**)malloc(MAXLINE*sizeof(char**));
  				int k=0;
  				char *token = (char *)malloc(1000*sizeof(char));
- 				while(input[k]!=NULL){
-					if(strcmp(input[k],"|")==0){
-						break;
-					}
-					else if(k<j){
+ 				while(tokens[k]!=NULL){
+					if(k<j){
 						list1[tokenNo] = (char*)malloc(sizeof(token));
 						strcpy(list1[tokenNo],tokens[k]);
 						tokenNo++;
@@ -146,16 +143,26 @@ int main(int argc, char** argv){
 					}
 					else if(k==j){
 						tokenNo=0;
+						k++;
 					}
 					else{
 						list2[tokenNo] = (char*)malloc(sizeof(token));
 						strcpy(list2[tokenNo],tokens[k]);
 						tokenNo++;
-						k++;
+						k++;	
 					}
 				
 				}
-				my_pipe(list1,list2);
+				int pid, status; 
+				int fd[2]; 
+				pipe(fd); 
+				runsource(fd,list1);
+				rundest(fd,list2); 
+				close(fd[0]); 
+				close(fd[1]);
+				free(token);
+				free(list1);
+				free(list2);
             }
        }
 	}
@@ -168,6 +175,15 @@ int main(int argc, char** argv){
 	}
 	free(tokens);
 	return 0;
+}
+
+void printlist(char** a){
+	int i=0;
+	while(a[i]!=NULL){
+		printf("%s ",a[i]);
+		i++;
+	}
+	printf("\n");
 }
 
 void parallel(char** input){
@@ -228,16 +244,16 @@ void my_pipe(char** inp1,char** inp2){
 
     //child process 1
     if(fork()==0){
-        dup2(fds[0],0);
-        close(fds[1]);
-        execvp(inp2[0],inp2);
+        dup2(fds[1],1);
+        close(fds[0]);
+        execvp(inp1[0],inp1);
         perror("execvp failed");
 
     }
     else if((pid=fork())==0){
-        dup2(fds[1],1);
-        close(fds[0]);
-        execvp(inp1[0],inp1);
+        dup2(fds[0],0);
+        close(fds[1]);
+        execvp(inp1[1],inp1);
         perror("execvp failed");
     }
     else{
@@ -506,3 +522,44 @@ bool analyze2(char **tokens){
 	return flag;
 }
 
+
+
+
+void runsource(int pfd[],char** cmd1) 
+ /* run the first part of the pipeline, cmd1 */ 
+ { 
+	 int pid; /* we don't use the process ID here, but you may wnat to print it for debugging */ 
+	 switch (pid = fork()) 
+	 { 
+	 	case 0:
+	 		 /* child */ 
+	 		 dup2(pfd[1], 1); 
+	 		 /* this end of the pipe becomes the standard output */ 
+	 		 close(pfd[0]); 
+	 		 /* this process don't need the other end */ 
+	 		 execvp(cmd1[0], cmd1); 
+	 		 /* run the command */ 
+	 		 perror(cmd1[0]); /* it failed! */ 
+	 	default: /* parent does nothing */ 
+	 		break;
+	 	case -1: perror("fork"); exit(1); 
+	} 
+} 
+
+
+void rundest(int pfd[], char** cmd2) /* run the second part of the pipeline, cmd2 */ 
+{ 	
+	int pid; 
+	switch (pid = fork()) 
+	{ 
+		case 0: /* child */ 
+			dup2(pfd[0], 0); /* this end of the pipe becomes the standard input */ 
+			close(pfd[1]); /* this process doesn't need the other end */ 
+			execvp(cmd2[0], cmd2); /* run the command */ 
+			perror(cmd2[0]); /* it failed! */ 
+			exit(0);
+		default: /* parent does nothing */ 
+			break;
+		case -1: perror("fork"); exit(1); 
+	} 
+} 
