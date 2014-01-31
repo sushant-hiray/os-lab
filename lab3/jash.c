@@ -64,14 +64,12 @@ void main_han(int signum){
 	if(signum==SIGINT){
 		fflush(stdout);
 		if(childpid==-1){
-			printf("in childpid=-1 handler id: %d , %d\n", getpid(),getppid());
 			fflush(stdout);
 			printf("\n$");
 			fflush(stdout);
 			return;
 		}
 		else{
-			printf("in handler id: %d\n", getpid());
 			fflush(stdout);
 			kill(childpid,SIGKILL);
 			childpid=-1;
@@ -178,23 +176,18 @@ int main(int argc, char** argv){
 				free(list1);
 				free(list2);
             }
-            else if(j==1){
-				//redirect_cmd(list1,list2);
-				redirect(tokens);
-
-            }
-            else if(j==2){
-            	redirect(tokens);
-            }
-            else if(j==3){
-            	printf("Here\n");
-            	redirect(tokens);
-            }
-            else if(j==4){
-            	printf("<< \n");
+            else if(isvalid(tokens)){
+            	 if(j==1 || j==2 || j==3){
+            	 	//redirect_cmd(list1,list2);
+					redirect(tokens);
+            	}
+            	else{
+            		analyze(tokens);
+            	}
             }
             else{
-            	analyze(tokens);
+            	printf("ERROR Command not found\n");
+            	
             }
        }
 	}
@@ -230,6 +223,7 @@ void parallel(char** input){
 	pid_t pid;
 	char *token = (char *)malloc(1000*sizeof(char));
 	kill(getpid(),SIGINT);
+	//read the tokenised input
 	for(i=0;input[i]!=NULL;i++){
 		if(strcmp(input[i],"parallel")==0){
 			continue;
@@ -249,6 +243,7 @@ void parallel(char** input){
 					i++;
 					}
 			}
+			//fork a new process 
 			pid = fork();
 			if( pid < 0)
 			{
@@ -262,6 +257,7 @@ void parallel(char** input){
 				return;
 			}
 			else{
+				//wait till all processes are complete
 				while(1){
 					int status;
 					int p=wait(&status);
@@ -365,6 +361,7 @@ int checkpipe(char** tokens){
 ELSE -1
 */
 
+//checks whether the above tokens are present and returns accordingly
 int checkredirect(char** tokens,int *pos){
 	int i;
     for(i=0;tokens[i]!=NULL;i++){
@@ -396,6 +393,7 @@ int checkredirect(char** tokens,int *pos){
   
     return -1;
 }
+
 /*
 Analyzes and runs appropriate command
 */
@@ -499,7 +497,13 @@ bool analyze(char **tokens){
 	}
 
 	else if(check==1 || check==2 || check==3 || check == 4){
-		redirect(tokens);
+		if(isvalid(tokens)){
+			redirect(tokens);	
+		}
+		else{
+			printf("ERROR in command\n");
+		}
+		
 	}
 	else{
 		pid = fork();
@@ -584,6 +588,7 @@ void run(char* bat_file){
 
 /*
 Analyzes and runs appropriate command for the case of parallel
+Similar to analyze just doesnt spawn a new process.
 */
 bool analyze2(char **tokens){
 	char* command = (char *)malloc(1000*sizeof(char));
