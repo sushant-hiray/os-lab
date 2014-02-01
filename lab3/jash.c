@@ -11,7 +11,7 @@
 #define MAXLINE 1000
 #define DEBUG 0
 #define MAXPARALLEL 80
-#define ALARM_TIME 5
+#define ALARM_TIME 60
 
 typedef enum { false, true } bool;
 
@@ -423,9 +423,13 @@ bool analyze(char **tokens){
 		else if(pid == 0)
 		{
 			if(check==5){
+				signal(SIGINT, SIG_IGN);
 				tokens[pos]=NULL;
 			}
 			run(tokens[1]);
+			if(check==5){
+				printf("Process with pid: %d exiting\n", pid);
+			}
 			exit(0);
 			//return true;
 		}
@@ -441,6 +445,7 @@ bool analyze(char **tokens){
 	}
 	else if(strcmp(command,"exit")==0){
 		killpg(getpgid(0),SIGINT);
+		killpg(getpgid(0),SIGQUIT);
 		exit(0);
 		return true;
 	}
@@ -456,9 +461,13 @@ bool analyze(char **tokens){
 		else if(pid == 0)
 		{
 			if(check==5){
+				signal(SIGINT, SIG_IGN);
 				tokens[pos]=NULL;
 			}
 			parallel(tokens);
+			if(check==5){
+				printf("Process with pid: %d exiting\n", pid);
+			}
 			exit(0);
 			//return true;
 		}
@@ -482,6 +491,7 @@ bool analyze(char **tokens){
 		else if(pid == 0)
 		{
 			if(check==5){
+				signal(SIGINT, SIG_IGN);
 				tokens[pos]=NULL;
 			}
 			signal(SIGALRM,crontab_alarm_handler);
@@ -516,7 +526,8 @@ bool analyze(char **tokens){
 		else if(pid == 0)
 		{
 			if(check==5){
-			tokens[pos]=NULL;
+				signal(SIGINT, SIG_IGN);
+				tokens[pos]=NULL;
 			}
 
 			if(execvp(*tokens,tokens)==-1){
@@ -524,6 +535,9 @@ bool analyze(char **tokens){
 				printf("ERROR:%s %s\n",tokens[0],error_str);
 				exit(0);
 				return false;
+			}
+			if(check==5){
+				printf("Process with pid: %d exiting\n", pid);
 			}
 		}
 		else{

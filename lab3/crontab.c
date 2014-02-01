@@ -74,7 +74,7 @@ int can_exec(int i){
 		return 1;
 	}
 	else{
-		printf("%d%d%d%d%d\n",min_match,hr_match,day_match,mon_match,week_match);
+		//printf("%d%d%d%d%d\n",min_match,hr_match,day_match,mon_match,week_match);
 		return 0;
 	}
 }
@@ -86,7 +86,6 @@ int cron_run(){
 			int i;
 			for(i=0;i<row;i++){
 				if(can_exec(i)){
-					printf("can execute %s\n",c_data[i].argv[0]);
 					fflush(stdout);
 					analyze(c_data[i].argv);
 				}
