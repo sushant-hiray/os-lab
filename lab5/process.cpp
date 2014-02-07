@@ -7,6 +7,8 @@ Process::Process(int _pid,int _start,int _admission, vector<process_phase> _phas
 			p_id = _pid;
 			admission = _admission;
 			phases = _phase;
+			current_phase = 0;
+			current_iteration = 1;
 		}
 
 void Process::setcurphase(int _phase){
@@ -42,4 +44,32 @@ void Process::setstate(state _state){
 }
 vector<process_phase> Process::getphases(){
 	return phases;
+}
+
+int Process::getiostop(){
+	return phases[current_phase].io_time;
+}
+
+//1 -> complete 0->ongoing
+int Process::completeiteration(){
+	int expected=phases[current_phase].iterations;
+	if(current_iteration < expected){
+		current_iteration++;
+		return 0;
+	}
+	else if(current_iteration == expected){
+		current_iteration = 1;
+		int expected_phase = phases.size() - 1;
+		if(current_phase < expected_phase){
+			current_phase++;
+			return 0;
+		}
+		else if(current_phase == expected_phase){
+			return 1;
+		}
+	}
+}
+
+void Process::setadmission(int _time){
+	admission = _time;
 }

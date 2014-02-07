@@ -27,4 +27,6 @@ class EventHandler
    		void eventaction();
    		void addevent(Event* e);
    		void popevent();
+      Event* gettopevent();
+      void removeio(Event* process);
 };

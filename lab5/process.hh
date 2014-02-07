@@ -7,7 +7,7 @@ struct process_phase{
 	int io_time;
 };
 
-enum state { READY , BLOCKED };
+enum state { READY , BLOCKED, RUNNING };
 
 class Process{
 	private:
@@ -28,9 +28,12 @@ class Process{
 		int getcuritr();
 		int getpriority();
 		int getadmission();
+		void setadmission(int);
 		state getstate();
 		void setstate(state _state);
 		vector<process_phase> getphases();
+		int getiostop();
+		int completeiteration();
 		void setcompletetime(int _time){
 			complete_time=_time;
 		}

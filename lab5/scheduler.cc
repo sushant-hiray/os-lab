@@ -24,3 +24,4 @@ priority_queue<Process> Scheduler::getlist(){
 void Scheduler::setlevel(int l){
 	level = l;
 }
+
