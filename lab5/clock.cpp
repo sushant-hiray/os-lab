@@ -4,7 +4,10 @@
 #include <vector>
 #include <fstream>
 #include <queue>
+#include "clock.hh"
+
 using namespace std;
+
 
 Clock::Clock(){
 	curtime=0;

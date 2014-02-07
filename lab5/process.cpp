@@ -1,5 +1,9 @@
 #include <iostream>
 #include "process.hh"
+
+
+extern Clock* myclock;
+
 using namespace std;
 
 
@@ -72,4 +76,19 @@ int Process::completeiteration(){
 
 void Process::setadmission(int _time){
 	admission = _time;
+}
+
+int Process::getiostart(){
+	return lefttime();
+}
+
+void Process::savestate(){
+	int cur_time = myclock->getcurtime();
+	int com_time = cur_time - admission;
+	if (com_time < phases[current_phase].cpu_time){
+		complete_time = com_time;
+	}
+	else{
+		complete_time=0;
+	}
 }

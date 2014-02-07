@@ -3,36 +3,40 @@
 #include <string>
 #include <vector>
 #include <fstream>
+#include "scheduler.hh"
+#include "utils.h"
+#include "eventhandler.hh"
 using namespace std;
 
+Scheduler* scheduler;
+EventHandler* eh;
 
+// struct process_phase{
+// 	int iterations;
+// 	int cpu_time;
+// 	int io_time;
+// };
 
-struct process_phase{
-	int iterations;
-	int cpu_time;
-	int io_time;
-};
+// struct process{
+// 	int p_id;
+// 	int start_priority;
+// 	int admission;
+// 	vector<process_phase> phases;
+// };
 
-struct process{
-	int p_id;
-	int start_priority;
-	int admission;
-	vector<process_phase> phases;
-};
+// struct sc_level{
+// 	int level_number;
+// 	int priority;
+// 	int time_slice;
+// };
 
-struct sc_level{
-	int level_number;
-	int priority;
-	int time_slice;
-};
-
-struct scheduler{
-	int no_levels;
-	vector<sc_level> levels;
-};
+// struct sscheduler{
+// 	int no_levels;
+// 	vector<sc_level> levels;
+// };
 
 vector<process> process_list;
-scheduler my_scheduler;
+sscheduler my_scheduler;
 
 
 void process_proc_file(){

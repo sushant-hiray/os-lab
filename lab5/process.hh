@@ -1,14 +1,8 @@
 #include <iostream>
 #include <vector>
+#include "utils.h"
+
 using namespace std;
-
-struct process_phase{
-	int iterations;
-	int cpu_time;
-	int io_time;
-};
-
-enum state { READY , BLOCKED, RUNNING };
 
 class Process{
 	private:
@@ -19,7 +13,7 @@ class Process{
 		int admission;
 		state cur_state;
 		vector<process_phase> phases;
-		int complete_time;
+		int complete_time;		//kitna khatam kiya...
 
 	public:
 		Process(int _pid,int _start,int _admission, vector<process_phase> _phase);
@@ -35,6 +29,9 @@ class Process{
 		vector<process_phase> getphases();
 		int getiostop();
 		int completeiteration();
+		int getiostart();
+
+		void savestate();
 		void setcompletetime(int _time){
 			complete_time=_time;
 		}
