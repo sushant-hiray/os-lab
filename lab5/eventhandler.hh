@@ -21,7 +21,7 @@ class EventHandler
 {
 	private:
 		priority_queue<Event*, vector<Event*>, CompareTime> event_table;
-
+		
    	public:
    		EventHandler();
    		void eventaction();

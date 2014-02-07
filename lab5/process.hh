@@ -18,6 +18,7 @@ class Process{
 		int admission;
 		state cur_state;
 		vector<process_phase> phases;
+		int complete_time;
 
 	public:
 		Process(int _pid,int _start,int _admission, vector<process_phase> _phase);
@@ -30,4 +31,16 @@ class Process{
 		state getstate();
 		void setstate(state _state);
 		vector<process_phase> getphases();
+		void setcompletetime(int _time){
+			complete_time=_time;
+		}
+
+		int getcompletetime(){
+			return complete_time;
+		}
+
+		int lefttime(){
+			return phases[current_phase].cpu_time - complete_time;
+		}
+		
 };
