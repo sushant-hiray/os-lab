@@ -6,38 +6,21 @@
 #include "scheduler.hh"
 #include "utils.h"
 #include "eventhandler.hh"
+#include <queue>
 using namespace std;
+
+
 
 Scheduler* scheduler;
 EventHandler* eh;
-
-// struct process_phase{
-// 	int iterations;
-// 	int cpu_time;
-// 	int io_time;
-// };
-
-// struct process{
-// 	int p_id;
-// 	int start_priority;
-// 	int admission;
-// 	vector<process_phase> phases;
-// };
-
-// struct sc_level{
-// 	int level_number;
-// 	int priority;
-// 	int time_slice;
-// };
-
-// struct sscheduler{
-// 	int no_levels;
-// 	vector<sc_level> levels;
-// };
+priority_queue<Event*, vector<Event*>, CompareTime> event_table;
+Clock* myclock;
+priority_queue<Process*, vector<Process*>, ComparePriority> schedule_list;
 
 vector<process> process_list;
 sscheduler my_scheduler;
-
+//priority_queue<Process*> _list
+vector<Process*> p_list;
 
 void process_proc_file(){
 	string line, line2;
@@ -73,6 +56,10 @@ void process_proc_file(){
 			    getline(infile, line2);
 			}
 			process_list.push_back(proc);
+			//Process(int _pid,int _start,int _admission, vector<process_phase> _phase);
+			Process* p = new Process(proc.p_id, proc.start_priority, proc.admission, proc.phases);
+			p_list.push_back(p);
+
 		}
 	}
 	// cout<<(process_list[1].phases[1]).io_time<<endl;
@@ -110,8 +97,37 @@ void process_scheduler_file(){
 }
 
 int main(){
+	eh = new EventHandler(event_table);
+	scheduler= new Scheduler(schedule_list);
 	process_proc_file();
-	cout<<(process_list[1].phases[1]).io_time<<endl;
-	process_scheduler_file();
-	cout<<my_scheduler.levels[1].time_slice<<endl;
+	myclock=new Clock();
+	//cout<<p_list.size();
+	for(int i=0;i<p_list.size();i++){
+		Event* e = new Event(p_list[i]->getadmission(), p_list[i]->getpid(), Admission, p_list[i]);
+		eh->addevent(e);
+	}
+	//eh->eprint();
+	//cout<<(process_list[1].phases[1]).io_time<<endl;
+	
+
+
+	while(eh->gettopevent()!=NULL){
+		myclock->updateClock(eh->gettopevent()->get_etime());
+		eh->eventaction();
+		
+	}
+
+
+
+
+
+
+
+
+
+
+
+
+	// process_scheduler_file();
+	// cout<<my_scheduler.levels[1].time_slice<<endl;
 }

@@ -5,12 +5,17 @@
 #include <queue>
 #include <vector>
 
+#define DEBUG 0
+#define IFBUG if(DEBUG) { 
+#define ENDBUG }
+
+const static char* state_type[] = {"Admission","IOStart", "IOStop"};
 using namespace std;
 
-static Clock* myclock;
+extern Clock* myclock;
 
 enum state { READY , BLOCKED, RUNNING };
-enum E_Type {Admission, CStart, CStop, IOStart, IOStop, Complete };
+enum E_Type {Admission, IOStart, IOStop};
 //static EventHandler* eh;
 
 struct process_phase{
