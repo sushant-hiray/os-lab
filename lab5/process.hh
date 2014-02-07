@@ -30,4 +30,4 @@ class Process{
 		state getstate();
 		void setstate(state _state);
 		vector<process_phase> getphases();
-}
+};

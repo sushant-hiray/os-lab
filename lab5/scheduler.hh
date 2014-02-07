@@ -8,7 +8,7 @@ class Scheduler{
 		int level;
 		EventHandler eh;
 		priority_queue<Process> process_list;
-		
+
 	public:
 		Scheduler(EventHandler _eh, priority_queue<Process> _list);
 		EventHandler geteh();
@@ -17,4 +17,4 @@ class Scheduler{
 		void setlevel(int l);
 
 
-}
+};
