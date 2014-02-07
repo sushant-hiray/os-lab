@@ -17,18 +17,14 @@ int Event::get_etime(){
 	return etime;
 }
 
-int Event::get_pid(){
+int Event::get_epid(){
 	return epid;
 }
 
-int Event::get_etype(){
-	return etime;
+E_Type Event::get_etype(){
+	return etype;
 }
 
-Process* Event::getProcess(){
+Process* Event::getprocess(){
 	return process;
-}
-
-void Event::Action(){
-	
 }

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 using namespace std;
 
 struct process_phase{
@@ -45,5 +46,7 @@ class Process{
 		int lefttime(){
 			return phases[current_phase].cpu_time - complete_time;
 		}
-		
+		int getpid(){
+			return p_id;
+		}
 };

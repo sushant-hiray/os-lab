@@ -1,6 +1,6 @@
 #include <iostream>
+#include "process.hh"
 using namespace std;
-
 
 
 Process::Process(int _pid,int _start,int _admission, vector<process_phase> _phase){

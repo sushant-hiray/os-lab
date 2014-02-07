@@ -1,11 +1,5 @@
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <vector>
-#include <fstream>
-#include <queue>
-using namespace std;
-
+#ifndef _EVENT_HANDLER
+#define _EVENT_HANDLER
 
 class CompareTime {
 public:
@@ -30,3 +24,5 @@ class EventHandler
       Event* gettopevent();
       void removeio(Event* process);
 };
+
+#endif

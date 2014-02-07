@@ -4,6 +4,10 @@
 #include <vector>
 #include <fstream>
 #include <queue>
+#include "process.hh"
+#include "scheduler.hh"
+#include "Event.h"
+
 using namespace std;
 
 Eventhandler::Eventhandler(priority_queue<Event*, vector<Event*>, CompareTime> _table){
