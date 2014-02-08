@@ -13,6 +13,7 @@ Process::Process(int _pid,int _start,int _admission, vector<process_phase> _phas
 			phases = _phase;
 			current_phase = 0;
 			current_iteration = 1;
+			start_priority = _start;
 		}
 
 void Process::setcurphase(int _phase){
@@ -91,4 +92,5 @@ void Process::savestate(){
 	else{
 		complete_time=0;
 	}
+	//cout<<" completed time of process: "<<getpid()<<" is "<<complete_time<<endl;
 }

@@ -113,6 +113,7 @@ int main(){
 
 	while(eh->gettopevent()!=NULL){
 		myclock->updateClock(eh->gettopevent()->get_etime());
+		//cout<<"in while"<<endl;
 		eh->eventaction();
 		
 	}

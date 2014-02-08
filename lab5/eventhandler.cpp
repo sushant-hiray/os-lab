@@ -20,6 +20,7 @@ EventHandler::EventHandler(priority_queue<Event*, vector<Event*>, CompareTime> _
 
 void EventHandler::addevent(Event* e){
 	event_table.push(e);
+	//cout<<"event added"<<endl;
 }
 
 void EventHandler::popevent(){
@@ -39,13 +40,14 @@ Event* EventHandler::gettopevent(){
 
 void EventHandler::removeio(Process* process){
 	priority_queue<Event*> tempqueue;
-	while(event_table.top()!=NULL){
+	while(gettopevent()!=NULL){
 		if(event_table.top()->get_epid() == process->getpid() && event_table.top()->get_etype()==IOStart){
-			event_table.pop();
-			while(tempqueue.top()!=NULL){
+			popevent();
+			while(!tempqueue.empty()){
 				addevent(tempqueue.top());
 				tempqueue.pop();
 			}
+			//cout<<"wfr'jewrf"<<endl;
 			break;
 		}
 		else{
@@ -56,7 +58,7 @@ void EventHandler::removeio(Process* process){
 }
 
 void EventHandler::eventaction(){
-
+	//cout<<"hey"<<endl;
 	Event* top_event = gettopevent();
 	Process* p = top_event->getprocess();
 	cout<<"Clock: "<<myclock->getcurtime()<<"	Event: "<<state_type[top_event->get_etype()]<<"   Process: "<<p->getpid()<< "   Phase No.: "<< p->getcurphase()<< "    Iteration No.: " << p->getcuritr()<<endl;
@@ -77,28 +79,46 @@ void EventHandler::eventaction(){
 			
 			else{	
 					IFBUG cout<<"\tINside Admission ELSE\n"; ENDBUG
-					if(cpuprocess->getpriority() < p->getpriority()){
+					//cout<<" cpu process id "<<cpuprocess->getpriority()<<" event top "<<p->getpriority()<<endl;
+					if(cpuprocess->getstate()==RUNNING){
+						if(cpuprocess->getpriority() < p->getpriority()){
 						//preemption
-						cpuprocess->savestate();
+							cout<<" Preemption "<<endl;
+							//cout<< " admission time "<<cpuprocess->getadmission()<<endl;
+							cpuprocess->savestate();
+							//cout<<" left time "<<cpuprocess->lefttime()<<endl;
 
+							cpuprocess->setstate(READY);
+							//cout<<"masala"<<endl;
+							removeio(cpuprocess);
+							
+							scheduler->addprocess(p);
 
-						cpuprocess->setstate(READY);
-						removeio(cpuprocess);
-						scheduler->addprocess(p);
-
-						Event* iostart = new Event(p->getiostart() + myclock->getcurtime(),p->getpid(),IOStart,p);
-						p->setadmission(myclock->getcurtime());
-						p->setstate(RUNNING);
-						addevent(iostart);
-
-
+							Event* iostart = new Event(p->getiostart() + myclock->getcurtime(),p->getpid(),IOStart,p);
+							p->setadmission(myclock->getcurtime());
+							//cout<< " admission time second time "<<p->getadmission()<<endl;
+							p->setstate(RUNNING);
+							addevent(iostart);
+						}
+						else{
+							//no preempt
+							//cout<<" no preemption "<<endl;
+							p->setstate(READY);
+							scheduler->addprocess(p); //todo add event
+							
+						}
 					}
+
 					else{
-						//no preemption
-						p->setstate(READY);
-						scheduler->addprocess(p); //todo add event
-					
+							//cout<<"here"<<endl;
+							
+							Event* iostart = new Event(p->getiostart() + myclock->getcurtime(),p->getpid(),IOStart,p);
+							p->setadmission(myclock->getcurtime());
+							//cout<< " admission time second time "<<p->getadmission()<<endl;
+							p->setstate(RUNNING);
+							addevent(iostart);
 					}
+					
 
 				}
 			break;
@@ -113,7 +133,7 @@ void EventHandler::eventaction(){
 			Event* iostop= new Event(p->getiostop() + myclock->getcurtime(),p->getpid(),IOStop,p);
 			IFBUG cout<<"INside IOStart\n"; ENDBUG
 			addevent(iostop);
-			IFBUG cout<< "schedular.top: "<<scheduler->gettopprocess()->getadmission()<<endl; ENDBUG
+			//IFBUG cout<< "schedular.top: "<<scheduler->gettopprocess()->getadmission()<<endl; ENDBUG
 			scheduler->removetop(); //todo
 			scheduler->schedule(); //todo
 			break;

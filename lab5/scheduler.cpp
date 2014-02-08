@@ -42,14 +42,34 @@ void Scheduler::addprocess(Process* p){
 }
 
 void Scheduler::removetop(){
-	process_list.pop();
+	if(!process_list.empty()){
+		process_list.pop();
+	}
 }
 
 void Scheduler::schedule(){
 	Process* p = this->gettopprocess();
+	//IFBUG cout<<"Inside scheduler:scdule\n"; ENDBUG
 	if(p!=NULL){
-		Event* e = new Event(myclock->getcurtime() + p->getiostart(), p->getpid(), IOStart, p);
-		eh->addevent(e);
+		state pstate = p->getstate();
+		IFBUG cout<<"Inside scheduler:scdule\n"; ENDBUG
+		switch(pstate){
+			case RUNNING:
+			{
+				Event* e = new Event(myclock->getcurtime() + p->getiostart(), p->getpid(), IOStart, p);
+				eh->addevent(e);
+				break;
+			}
+			case READY:
+			{	
+				Event* e = new Event(myclock->getcurtime(), p->getpid(), Admission, p);
+				eh->addevent(e);
+				break;
+			}
+		}
+		
+
 	}
-	IFBUG cout<<"Inside scheduler:scdule\n"; ENDBUG
+	return;
+	
 }
