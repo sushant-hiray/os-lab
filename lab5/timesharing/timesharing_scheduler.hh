@@ -21,8 +21,10 @@ class TimeSharingScheduler{
 		void addprocess(Process*);	//--
 		void removetop();			//--
 		void schedule();			//--
-		void handleadmission(Process*);
 		void settopprocess(Process*);
+		int gettimeslice(){
+			return timeslice;
+		}
 
 };
 

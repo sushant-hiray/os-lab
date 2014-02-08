@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <fstream>
-#include "timesharingscheduler.hh"
+#include "timesharing_scheduler.hh"
 #include "utils.h"
 #include "eventhandler.hh"
 #include <queue>
@@ -15,13 +15,13 @@ TimeSharingScheduler* scheduler;
 EventHandler* eh;
 priority_queue<Event*, vector<Event*>, CompareTime> event_table;
 Clock* myclock;
-priority_queue<Process*, vector<Process*>, ComparePriority> schedule_list;
+queue<Process*> schedule_list;
 
 vector<process> process_list;
 sscheduler my_scheduler;
 //priority_queue<Process*> _list
 vector<Process*> p_list;
-list<Process*> blocked;
+
 void process_proc_file(){
 	string line, line2;
 	int pid, prior;
@@ -59,7 +59,6 @@ void process_proc_file(){
 			//Process(int _pid,int _start,int _admission, vector<process_phase> _phase);
 			Process* p = new Process(proc.p_id, proc.start_priority, proc.admission, proc.phases);
 			p_list.push_back(p);
-			blocked.push_back(p);
 
 		}
 	}
@@ -102,10 +101,8 @@ int main(){
 	eh = new EventHandler(event_table);
 	process_proc_file();
 	process_scheduler_file();
-	TimeSharingScheduler scheduler = new TimeSharingScheduler(schedule_list,my_scheduler.levels[0].time_slice);
+	scheduler = new TimeSharingScheduler(schedule_list,my_scheduler.levels[0].time_slice);
 	
-
-
 	myclock=new Clock();
 	//cout<<p_list.size();
 	for(int i=0;i<p_list.size();i++){

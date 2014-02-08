@@ -57,6 +57,7 @@ int Process::getiostop(){
 
 //1 -> complete 0->ongoing
 int Process::completeiteration(){
+	complete_time=0;
 	int expected=phases[current_phase].iterations;
 	if(current_iteration < expected){
 		current_iteration++;

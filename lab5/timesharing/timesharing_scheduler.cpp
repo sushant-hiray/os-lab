@@ -29,6 +29,7 @@ void TimeSharingScheduler::setlevel(int l){
 
 Process* TimeSharingScheduler::gettopprocess(){
 	if(!process_list.empty()){
+		//cout<<"fgeer\n";
 		return process_list.front();
 	}
 	return NULL;
@@ -53,64 +54,25 @@ void TimeSharingScheduler::schedule(){
 		switch(pstate){
 			case READY:
 			{	
-				Event* e = new Event(myclock->getcurtime(), p->getpid(), Admission, p);
-				eh->addevent(e);
-				break;
+				p->setadmission(myclock->getcurtime());
+				cout<<"admission time of p is "<<p->getadmission()<<" "<<p->getcompletetime()<<endl;
+				p->setstate(RUNNING);
+				if(p->lefttime() <= timeslice){
+					//schelude io
+					Event* iostart = new Event(p->lefttime() + myclock->getcurtime(), p->getpid(),IOStart,p);
+					eh->addevent(iostart);
+				}
+				else{
+					//schedule timeslice
+					Event* etimeslice = new Event(timeslice + myclock->getcurtime(), p->getpid(),Timeslice,p);
+					eh->addevent(etimeslice);
+				}
 			}
 		}
-		
-
 	}
 	return;
 	
 }
-
-void TimeSharingScheduler::handleadmission(Process* p){
-	Process* cpuprocess = gettopprocess();
-	if(cpuprocess==NULL){
-		cout<<"Inside Admission\n";
-		Event* iostart = new Event(p->getiostart() + myclock->getcurtime(),p->getpid(),IOStart,p);
-		p->setadmission(myclock->getcurtime());
-		p->setstate(RUNNING);
-		addprocess(p);
-		eh->addevent(iostart);
-		cout<<"event iostart added when null "<<p->getpid()<<endl;
-		settopprocess(cpuprocess);
-
-	}
-	else{
-		cout<<" Preemption "<<endl;
-		//cout<< " admission time "<<cpuprocess->getadmission()<<endl;
-		if(cpuprocess->getstate()==RUNNING){
-			cpuprocess->savestate();
-		}
-		//cout<<" left time "<<cpuprocess->lefttime()<<endl;
-
-		cpuprocess->setstate(READY);
-
-		//cout<<"masala"<<endl;
-		eh->removeio(cpuprocess);
-		while(!process_list.empty()){
-			if(process_list.front()->getstate()==READY || process_list.front()->getstate()==RUNNING){
-				Event* admission = new Event(myclock->getcurtime() + timeslice,process_list.front()->getpid(),Admission, process_list.front());
-				eh->addevent(admission);
-				process_list.pop();
-				break;
-			}
-			else{
-				process_list.pop();
-			}
-		}
-		cout<<"event iostart added for process "<<p->getpid()<<endl;
-		Event* iostart = new Event(p->getiostart() + myclock->getcurtime(),p->getpid(),IOStart,p);
-		p->setadmission(myclock->getcurtime());
-		p->setstate(RUNNING);
-		addprocess(cpuprocess);
-		eh->addevent(iostart);
-		settopprocess(p);
-	}
-}
-
 
 void TimeSharingScheduler::settopprocess(Process* _p){
 	current_process = _p;
