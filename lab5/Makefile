@@ -1,6 +1,6 @@
 CC = g++ -std=c++0x -g 
-DEPS = eventhandler.hh process.hh scheduler.hh clock.hh
-OBJ = eventhandler.o process.o scheduler.o clock.o
+DEPS = eventhandler.hh process.hh scheduler.hh clock.hh Event.h
+OBJ = eventhandler.o process.o scheduler.o clock.o Event.o asgn5.cpp
 
 
 # $@ : lhs
@@ -16,6 +16,6 @@ main.out: $(OBJ)
 
 .PHONY: clean
 clean:
-	rm -rf a.out
+	rm -rf *.out
 	rm -rf *.o
 
