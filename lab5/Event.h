@@ -1,7 +1,8 @@
 #ifndef _EVENT
 #define _EVENT
+#include "process.hh"
 
-typedef enum { Admission, CStart, CStop, IOStart, IOStop, Complete } E_Type;
+
 
 class Event{
 private:

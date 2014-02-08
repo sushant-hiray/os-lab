@@ -1,6 +1,10 @@
 #include <iostream>
-using namespace std;
+#include "process.hh"
 
+
+extern Clock* myclock;
+
+using namespace std;
 
 
 Process::Process(int _pid,int _start,int _admission, vector<process_phase> _phase){
@@ -9,6 +13,7 @@ Process::Process(int _pid,int _start,int _admission, vector<process_phase> _phas
 			phases = _phase;
 			current_phase = 0;
 			current_iteration = 1;
+			start_priority = _start;
 		}
 
 void Process::setcurphase(int _phase){
@@ -72,4 +77,20 @@ int Process::completeiteration(){
 
 void Process::setadmission(int _time){
 	admission = _time;
+}
+
+int Process::getiostart(){
+	return lefttime();
+}
+
+void Process::savestate(){
+	int cur_time = myclock->getcurtime();
+	int com_time = cur_time - admission;
+	if (com_time < phases[current_phase].cpu_time){
+		complete_time = com_time;
+	}
+	else{
+		complete_time=0;
+	}
+	//cout<<" completed time of process: "<<getpid()<<" is "<<complete_time<<endl;
 }
