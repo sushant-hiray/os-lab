@@ -1,6 +1,7 @@
 #ifndef _SCHEDULER
 #define _SCHEDULER 
 #include <queue>
+#include <list>
 #include "Event.h"
 
 class ComparePriority {
@@ -17,6 +18,7 @@ class Scheduler{
 		int level;
 		//EventHandler eh;
 		priority_queue<Process*, vector<Process*>, ComparePriority> process_list;
+		list<Process*> blocked_processes;
 
 	public:
 		Scheduler(priority_queue<Process*, vector<Process*>, ComparePriority> _list);
@@ -28,6 +30,8 @@ class Scheduler{
 		void addprocess(Process*);	//--
 		void removetop();			//--
 		void schedule();			//--
+		void addblocked(Process*);
+		void removeblocked(Process*);	
 
 
 };

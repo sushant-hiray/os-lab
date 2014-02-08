@@ -86,11 +86,12 @@ int Process::getiostart(){
 void Process::savestate(){
 	int cur_time = myclock->getcurtime();
 	int com_time = cur_time - admission;
-	if (com_time < phases[current_phase].cpu_time){
-		complete_time = com_time;
+	if (complete_time + com_time < phases[current_phase].cpu_time){
+		complete_time += com_time;
 	}
 	else{
 		complete_time=0;
 	}
-	//cout<<" completed time of process: "<<getpid()<<" is "<<complete_time<<endl;
+	//cout<< "Savedstate ID: "<< p_id << "	"<< cur_time<<"	"<<complete_time<<"	"<<endl;
+	//		cout<<" completed time of process: "<<getpid()<<" is "<<complete_time<<endl;
 }

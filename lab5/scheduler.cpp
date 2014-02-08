@@ -43,7 +43,32 @@ void Scheduler::addprocess(Process* p){
 
 void Scheduler::removetop(){
 	if(!process_list.empty()){
+		//cout<<"Process removed from scheduler is: "<<process_list.top()->getpid()<<endl;
 		process_list.pop();
+	}
+}
+
+void Scheduler::removeblocked(Process* p){
+	list<Process*>::iterator it;
+	bool flag=false;
+	int id = p->getpid();
+	for(it=blocked_processes.begin();it!=blocked_processes.end();it++){
+		if((*it)->getpid() == id ){
+			flag=true;
+			break;
+		}
+	}
+	if(flag){
+		(*it)->setstate(READY);
+		process_list.push(*it);
+		it=blocked_processes.erase(it);
+	}
+}
+
+void Scheduler::addblocked(Process* p){
+	if(p!=NULL){
+		p->setstate(BLOCKED);
+		blocked_processes.push_back(p);
 	}
 }
 
@@ -54,12 +79,7 @@ void Scheduler::schedule(){
 		state pstate = p->getstate();
 		IFBUG cout<<"Inside scheduler:scdule\n"; ENDBUG
 		switch(pstate){
-			case RUNNING:
-			{
-				Event* e = new Event(myclock->getcurtime() + p->getiostart(), p->getpid(), IOStart, p);
-				eh->addevent(e);
-				break;
-			}
+			
 			case READY:
 			{	
 				Event* e = new Event(myclock->getcurtime(), p->getpid(), Admission, p);
