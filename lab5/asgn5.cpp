@@ -21,7 +21,7 @@ vector<process> process_list;
 sscheduler my_scheduler;
 //priority_queue<Process*> _list
 vector<Process*> p_list;
-
+list<Process*> blocked;
 void process_proc_file(){
 	string line, line2;
 	int pid, prior;
@@ -59,6 +59,7 @@ void process_proc_file(){
 			//Process(int _pid,int _start,int _admission, vector<process_phase> _phase);
 			Process* p = new Process(proc.p_id, proc.start_priority, proc.admission, proc.phases);
 			p_list.push_back(p);
+			blocked.push_back(p);
 
 		}
 	}
@@ -96,10 +97,30 @@ void process_scheduler_file(){
 	}
 }
 
+
 int main(){
 	eh = new EventHandler(event_table);
 	scheduler= new Scheduler(schedule_list);
 	process_proc_file();
+
+
+	// list<Process*>::iterator it;
+	// bool flag=false;
+	// for(it=blocked.begin();it!=blocked.end();it++){
+	// 	if((*it)->getpid() == 9 ){
+	// 		flag=true;
+	// 		break;
+	// 	}
+	// }
+	// if(flag){
+	// 	it=blocked.erase(it);
+	// }
+
+	// for(it=blocked.begin();it!=blocked.end();it++){
+	// 	cout<<"Process: "<<(*it)->getpid()<<endl;
+	// }
+
+	// return 0;
 	myclock=new Clock();
 	//cout<<p_list.size();
 	for(int i=0;i<p_list.size();i++){
