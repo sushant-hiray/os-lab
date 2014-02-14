@@ -35,8 +35,14 @@ In this way memory is accessed.
 
 
 Q4)
-a)
+a) The struct kernel_t has pointers to head and tail of PCB's of context,running,free,suspended,zombie,finished and allocated. All the PCB's can be found by iterating over the list from the head  by using ->next.
 
+b) The struct ctx_t contains a field instr_slice which holds the instruction slice of the process.
 
 c) Scheduling is handling in function ke_run() in the file src/libm2skernel/m2skernel.c
+It executes one instruction from each running context.
+It starts with the running_list_head. It executes instr_slice no. of instructions for the head. For other processes, it runs a single instruction and breaks.
 
+Once all the processes in the running list are looped over once, it frees up all the finished contexts. 
+
+After freeing up the finished contexts, it calls the ke_process_events which processes the set of suspended contexts, ie looks up the list of suspended contexts and tries to find the process that needs to be woken up.
