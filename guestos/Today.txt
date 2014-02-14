@@ -1,0 +1,13 @@
+Sushant Hiray 110050009
+Sanchit Garg  110050035
+
+Q1)
+The boot() function is defined in file src/guestos.c
+It performs the following actions:
+-> install signals: Installs the basic signals
+-> set defaults: It gets the following values from the .config file
+                    Instruction slice
+                    Number of Heads
+                    Number of Tracks
+                    Number of Sectors
+
