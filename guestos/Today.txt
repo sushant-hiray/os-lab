@@ -11,3 +11,32 @@ It performs the following actions:
                     Number of Tracks
                     Number of Sectors
 
+
+Q3)
+
+a) The system calls performed by the executed application are intercepted by Multi2Sim and emulated in file 'syscall.c' in the function syscall_do
+
+syscall_do function is invoked in machine.c in function op_int_imm8_impl
+
+b) 327 syscalls are present: found in src/libm2skernel/syscall.dat. Out of which 1st 326 are handled by host OS. In the current system only the last call namely syscall_code=400 is handled by host OS. However it can support 11 syscalls (400-410)
+
+c) The syscall_do handles the system call.The system call code is in eax. Depending on the syscall code,(if < 325 it is host os syscall else guest os syscall) it performs switch case, and then does appropriate handling depending whether the system call is a host os syscall or is a guest os syscall.
+
+d) The initial step is to get the host file descriptor. 
+This it does by first getting the guest file descriptor using the ebx parameter.
+The host_fd is found using fd=fdt_entry_get(isa_ctx->fdt, guest_fd);
+host_fd=fd->host_fd;
+
+Now non-blocking read is performed using: read(host_fd, buf, count) 
+If all goes well the data from isa_mem (which is a struct) is read and written into an allocated buffer.
+
+In this way memory is accessed.
+
+
+
+Q4)
+a)
+
+
+c) Scheduling is handling in function ke_run() in the file src/libm2skernel/m2skernel.c
+
