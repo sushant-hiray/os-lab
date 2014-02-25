@@ -1,5 +1,10 @@
 
 [ Context 0 ]
-Exe = ../
+Exe = 1.out
 
-Uid = 0
+Uid = 1234
+
+[ Context 1 ]
+Exe = 2.out
+
+Uid = 23435
