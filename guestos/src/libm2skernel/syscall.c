@@ -828,6 +828,14 @@ int handle_guest_syscalls() {
 		retval=get_pid();
 		break;
 	}
+    case syscall_code_set_instruction_slice:
+    {
+        //printf("\nin syscall_code_set_instruction_slice\n");
+        int slice = isa_regs->ebx;
+        printf("\nin syscall_code_set_instruction_slice setting slice= %d\n",slice);
+        isa_ctx->instr_slice = slice;
+        break;
+    }
 
         default:
             if (syscode >= syscall_code_count) {
