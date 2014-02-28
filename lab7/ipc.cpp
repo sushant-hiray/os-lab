@@ -5,6 +5,7 @@
 #include <string.h>
 #include <list>
 #include <iostream>
+#include <fstream>
 
 
 #define QUEUESIZE 20
@@ -14,9 +15,15 @@
 
 using namespace std;
 
+typedef struct{
+	int tsize[NUM_THREADS];
+	pthread_mutex_t *mut;
+	pthread_cond_t* notEmpty[NUM_THREADS];
+} size_info;
 
 typedef struct{
 	int tid;
+	int sid;
 	char msg[MSGLEN];
 } q_inp;
 
@@ -35,7 +42,14 @@ typedef struct {
 	int tid;
 	char filename[FILESIZE];
 	queue* buffer;
+	size_info* sinfo;
 } p_input;
+
+struct message{
+	int type; //send = 0 receive = 1
+	int receiver;
+	char msg[MSGLEN];
+};
 
 queue *queueInit (){
 	queue *q;
@@ -59,13 +73,47 @@ queue *queueInit (){
 	return (q);
 }
 
+void queueDelete (queue *q)
+{
+	pthread_mutex_destroy (q->mut);
+	free (q->mut);	
+	pthread_cond_destroy (q->notFull);
+	free (q->notFull);
+	pthread_cond_destroy (q->notEmpty);
+	free (q->notEmpty);
+	free (q);
+}
+
+size_info *sizeinfoInit (){
+	size_info *si;
+	si = (size_info *)malloc (sizeof (size_info));
+	for(int i=0;i<NUM_THREADS;i++){
+		si->tsize[i] = 0;
+	}
+	si->mut = (pthread_mutex_t *) malloc (sizeof (pthread_mutex_t));
+	pthread_mutex_init (si->mut, NULL);
+	for(int i=0;i<NUM_THREADS;i++){
+		si->notEmpty[i] = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
+		pthread_cond_init (si->notEmpty[i], NULL);
+	}
+	
+	return (si);
+}
+
+void sizeinfoDelete (size_info *si)
+{
+	pthread_mutex_destroy (si->mut);
+	free (si->mut);
+	for(int i=0;i<NUM_THREADS;i++){
+		pthread_cond_destroy((si->notEmpty)[i]);
+		free ((si->notEmpty)[i]);	
+	}
+	free(si);
+}
+
 void queueAdd (queue *q, q_inp inp){
-	cout<<"fdsfcsd\n";
-	//list<q_inp> l ;
+
 	if(q->cur_size < QUEUESIZE){
-		//cout<<inp.msg<<endl;
-		//l.push_back(inp);
-		//cout<<inp.msg<<endl;
 		(q->msg_list)->push_back(inp);
 
 		q->cur_size++;
@@ -77,69 +125,106 @@ void queueAdd (queue *q, q_inp inp){
 	return;
 }
 
-char* queueRead(queue* q, int id){
+q_inp queueRead(queue* q, int id){
 	char msg[MSGLEN];
 	list<q_inp>::iterator it = (q->msg_list)->begin();
 	for(;it!=(q->msg_list)->end();it++){
 		if((*it).tid == id){
 			//copy the msg
 			//msg = new char(MSGLEN);;
-			
-			strncpy(msg, (*it).msg, MSGLEN);
-			//delete the msg
-			(q->msg_list)->erase(it);
 			q->cur_size--;
 			q->full = 0;
-			break;
+			(q->msg_list)->erase(it);
+			if(q->cur_size == 0){
+				q->empty = 1;
+			}
+			return *it;
 		}
 	}
 	//
 	if(q->cur_size == 0){
 		q->empty = 1;
 	}
-	return msg;
+	q_inp pq;
+	strncpy(pq.msg,"",MSGLEN);
+	return pq;
 }
-
-// void queueDel (queue *q, list<q_inp>::iterator it){
-// 	if(it!=q->msg_list.end()){
-// 		q->msg_list.erase(it);
-// 	}
-// 	return;
-// }
 
 
 void* USERS(void* inp){
 
 	p_input * input = (p_input*)inp;
-	// pthread_mutex_lock ((input->buffer)->mut);
-	// cout<<"hellow " << input->tid<<endl;
-	// pthread_mutex_unlock ((input->buffer)->mut);
-	while(0){
-		//read froom file
 
+	  string line;
+	  ifstream myfile (input->filename);
+	  if (myfile.is_open())
+	  {
+	    while ( getline (myfile,line) )
+	    {
+	    		string delimiter = " ";
+	    		string token = line.substr(0, line.find(delimiter));
+		      	message m;
+		      	char* send = "send";
+		      	char* receive = "recieve" ;
+		      	if(strcmp(token.c_str(),send)==0){
+		      		m.type = 0;
+		      		token = line.substr(line.find(delimiter)+1,strlen(line.c_str()));
+		      		m.receiver = atoi(token.substr(0,token.find(delimiter)).c_str());
+		      		token = token.substr(token.find(delimiter)+ 1, strlen(token.c_str()));
+		      		strcpy(m.msg, token.c_str());
 
-		if(/*send*/0){
-			pthread_mutex_lock ((input->buffer)->mut);
-			while((input->buffer)->full){
-				printf ("producer: queue FULL.\n");
-				pthread_cond_wait ((input->buffer)->notFull, (input->buffer)->mut);
-			}
-			q_inp q;
-			queueAdd (input->buffer, q);
-			cout<<"hellow " << input->filename<<endl;
-			pthread_mutex_unlock ((input->buffer)->mut);
-			pthread_cond_signal ((input->buffer)->notEmpty);
-			usleep (100000);
-		}
-		else if(/*recieve*/0){
+		      		while((input->buffer)->full){
+		      			printf ("sender: queue FULL.\n");
+		      			pthread_cond_wait ((input->buffer)->notFull, (input->buffer)->mut);
+		      		}
+		      		pthread_mutex_lock ((input->buffer)->mut);
+		      		pthread_mutex_lock ((input->sinfo)->mut);
+		      		q_inp add;
+		      		add.tid = m.receiver;
+		      		add.sid = input->tid;
+		      		strncpy(add.msg, m.msg, MSGLEN);
+		      		queueAdd (input->buffer, add);
+		      		(input->sinfo->tsize)[m.receiver]+=1; 
+		      		cout<<"Message sent: " << input->tid << " " << m.receiver << " "<< m.msg<<endl;
+		      		pthread_mutex_unlock ((input->sinfo)->mut);
+		      		pthread_mutex_unlock ((input->buffer)->mut);
+		      		//pthread_cond_signal ((input->buffer)->notEmpty);
+		      		pthread_cond_signal ((input->sinfo->notEmpty)[m.receiver]);
+		      		usleep (100000);	
+		      	}
 
-		}
-	}
+		      	else if(strcmp(token.c_str(),receive)==0){
+		      		m.type = 1;
+		      		m.receiver = -1;
+		      		//cout<<"receive\n";
+		      		while((input->buffer)->empty){
+		      			printf ("[Thread %d]reciever: queue Empty.\n", input->tid);
+		      			pthread_cond_wait ((input->sinfo->notEmpty)[input->tid], (input->buffer)->mut);
+		      		}
+		      		pthread_mutex_lock ((input->buffer)->mut);
+		      		pthread_mutex_lock ((input->sinfo)->mut);
+		      		q_inp rec = queueRead (input->buffer, input->tid);
+		      		(input->sinfo->tsize)[input->tid] -= 1;
+		      		cout<<"Message received: " << rec.sid << " " << input->tid << " "<< rec.msg<<endl;
+		      		pthread_mutex_unlock ((input->sinfo)->mut);
+		      		pthread_mutex_unlock (input->buffer->mut);
+		      		pthread_cond_signal (input->buffer->notFull);
+		      		//printf ("consumer: recieved %s.\n", rec);
+		      		usleep (50000);
+		      	}
 
-	pthread_mutex_lock ((input->buffer)->mut);
-	cout<<"hellow " << input->filename<<endl;
-	pthread_mutex_unlock ((input->buffer)->mut);
+	    }
+	    myfile.close();
+	  }
+	  else{
+	  	pthread_mutex_lock ((input->buffer)->mut);
+	  	cout<<"file doesn't exist "<<input->tid<<endl;
+	  	pthread_mutex_unlock ((input->buffer)->mut);
+	  }
+
+	  return (NULL);
 }
+
 
 
 int main(){
@@ -150,24 +235,12 @@ int main(){
 		fprintf (stderr, "main: Queue Init failed.\n");
 		exit (1);
 	}
+	size_info *si = sizeinfoInit();
+	if (si ==  NULL) {
+		fprintf (stderr, "main: Size Info Init failed.\n");
+		exit (1);
+	}
 
-	// q_inp inp;// = {1,"0123456789"};
-	// inp.tid =1;
-	//inp.msg = "012345678";
-	
-
-
-	// strncpy(inp.msg,"012345678",MSGLEN);
-	//l.push_back(inp);
-
-	// queueAdd(FCFS, inp);
-	// cout<<FCFS->cur_size<<endl;
-	// strncpy(a,queueRead(FCFS,1),MSGLEN);
-	//cout<<a<<" "<< FCFS->full <<endl;
-	//char* msg = queueRead(FCFS,1);
-	//cout<<msg<<endl;
-	//msg = queueRead(FCFS,1);
-	//cout<<msg<<endl;
 	pthread_t users[NUM_THREADS];
 	char files[NUM_THREADS][FILESIZE];
 	strncpy(files[0], "1.txt", FILESIZE);
@@ -179,6 +252,7 @@ int main(){
 		p_input* p;
 		p = (p_input*)malloc(sizeof(p_input));
 		p->buffer = FCFS;
+		p->sinfo = si;
 		p->tid = i;
 		strncpy(p->filename, files[i], MSGLEN);
 		pthread_create(&users[i],NULL,USERS,p);
@@ -188,6 +262,7 @@ int main(){
 	for(int i =0 ;i<NUM_THREADS ;++i){
 		pthread_join (users[i], NULL);
 	}
-
+	queueDelete(FCFS);
+	sizeinfoDelete(si);
 	return 0;
 }
