@@ -15,11 +15,11 @@
 
 using namespace std;
 
-typedef struct{
-	int tsize[NUM_THREADS];
-	pthread_mutex_t *mut;
-	pthread_cond_t* notEmpty[NUM_THREADS];
-} size_info;
+// typedef struct{
+// 	int tsize[NUM_THREADS];
+// 	pthread_mutex_t *mut;
+// 	pthread_cond_t* notEmpty[NUM_THREADS];
+// } size_info;
 
 typedef struct{
 	int tid;
@@ -27,22 +27,23 @@ typedef struct{
 	char msg[MSGLEN];
 } q_inp;
 
-list<q_inp> Msg_List;
+list<q_inp> Msg_List[NUM_THREADS];
 
 typedef struct {
-	list<q_inp>* msg_list;
+	list<q_inp>* msg_list[NUM_THREADS];
 	int cur_size;
-	//long head, tail;
 	int full, empty;
+	int no_blocked, no_running;
 	pthread_mutex_t *mut;
-	pthread_cond_t *notFull, *notEmpty;
+	pthread_cond_t *notFull;//, *notEmpty;
+	pthread_cond_t* notEmpty[NUM_THREADS];
+	char th_blocked_status[NUM_THREADS];		//'r' receive, 's' send, 'n' none
 } queue;
 
 typedef struct {
 	int tid;
 	char filename[FILESIZE];
 	queue* buffer;
-	size_info* sinfo;
 } p_input;
 
 struct message{
@@ -55,20 +56,29 @@ queue *queueInit (){
 	queue *q;
 
 	q = (queue *)malloc (sizeof (queue));
-	q->msg_list = &Msg_List;
+	for(int i=0;i<NUM_THREADS;i++){
+		q->msg_list[i] = &Msg_List[i];
+	}
+	
 	if (q == NULL) return (NULL);
 
 	q->empty = 1;
 	q->full = 0;
 	q->cur_size = 0;
-	// q->head = 0;
-	// q->tail = 0;
+	q->no_running = 0;
+	q->no_blocked = 0;
+	
 	q->mut = (pthread_mutex_t *) malloc (sizeof (pthread_mutex_t));
 	pthread_mutex_init (q->mut, NULL);
+	for(int i=0;i<NUM_THREADS;i++){
+		
+		q->notEmpty[i] = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
+		pthread_cond_init (q->notEmpty[i], NULL);
+		q->th_blocked_status[i] = 'n';
+	}
+	
 	q->notFull = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
 	pthread_cond_init (q->notFull, NULL);
-	q->notEmpty = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
-	pthread_cond_init (q->notEmpty, NULL);
 	
 	return (q);
 }
@@ -76,45 +86,21 @@ queue *queueInit (){
 void queueDelete (queue *q)
 {
 	pthread_mutex_destroy (q->mut);
-	free (q->mut);	
+	free (q->mut);
+	for(int i=0;i<NUM_THREADS;i++){
+			
+		pthread_cond_destroy((q->notEmpty)[i]);
+		free ((q->notEmpty)[i]);
+	}
 	pthread_cond_destroy (q->notFull);
 	free (q->notFull);
-	pthread_cond_destroy (q->notEmpty);
-	free (q->notEmpty);
 	free (q);
 }
 
-size_info *sizeinfoInit (){
-	size_info *si;
-	si = (size_info *)malloc (sizeof (size_info));
-	for(int i=0;i<NUM_THREADS;i++){
-		si->tsize[i] = 0;
-	}
-	si->mut = (pthread_mutex_t *) malloc (sizeof (pthread_mutex_t));
-	pthread_mutex_init (si->mut, NULL);
-	for(int i=0;i<NUM_THREADS;i++){
-		si->notEmpty[i] = (pthread_cond_t *) malloc (sizeof (pthread_cond_t));
-		pthread_cond_init (si->notEmpty[i], NULL);
-	}
-	
-	return (si);
-}
-
-void sizeinfoDelete (size_info *si)
-{
-	pthread_mutex_destroy (si->mut);
-	free (si->mut);
-	for(int i=0;i<NUM_THREADS;i++){
-		pthread_cond_destroy((si->notEmpty)[i]);
-		free ((si->notEmpty)[i]);	
-	}
-	free(si);
-}
-
-void queueAdd (queue *q, q_inp inp){
+void queueAdd (queue *q, q_inp inp, int i){
 
 	if(q->cur_size < QUEUESIZE){
-		(q->msg_list)->push_back(inp);
+		(q->msg_list)[i]->push_back(inp);
 
 		q->cur_size++;
 		if(q->cur_size == QUEUESIZE){
@@ -125,32 +111,44 @@ void queueAdd (queue *q, q_inp inp){
 	return;
 }
 
-q_inp queueRead(queue* q, int id){
+q_inp queueRead(queue* q, int i){
 	char msg[MSGLEN];
-	list<q_inp>::iterator it = (q->msg_list)->begin();
-	for(;it!=(q->msg_list)->end();it++){
-		if((*it).tid == id){
-			//copy the msg
-			//msg = new char(MSGLEN);;
-			q->cur_size--;
-			q->full = 0;
-			(q->msg_list)->erase(it);
-			if(q->cur_size == 0){
-				q->empty = 1;
-			}
-			return *it;
+	list<q_inp>::iterator it = (q->msg_list)[i]->begin();
+
+	if(it!= (q->msg_list)[i]->end()){
+		q->cur_size--;
+		q->full = 0;
+		(q->msg_list)[i]->erase(it);
+		if(q->cur_size == 0){
+			q->empty = 1;
 		}
+		return *it;
 	}
-	//
-	if(q->cur_size == 0){
-		q->empty = 1;
+	else{
+		cout<<"[Thread "<< i << "]List empty for "<<endl;
+		q_inp pq;
+		strncpy(pq.msg,"",MSGLEN);
+		return pq;
 	}
-	q_inp pq;
-	strncpy(pq.msg,"",MSGLEN);
-	return pq;
 }
 
+void check_deadlock(p_input * input){
+	if((input->buffer->no_blocked == input->buffer->no_running) && (input->buffer->no_running!=0)){
+		for(int i=0;i<NUM_THREADS;i++){
+			if(input->buffer->th_blocked_status[i] == 'r'){
+				if(input->buffer->msg_list[i]->empty()){
+					continue;
+				}
+				else{
+					return;
+				}
+			}
+		}
+		printf("[Thread %d] Deadlock Detected\n",input->tid);
+		exit(0);
+	}
 
+}
 void* USERS(void* inp){
 
 	p_input * input = (p_input*)inp;
@@ -159,6 +157,9 @@ void* USERS(void* inp){
 	  ifstream myfile (input->filename);
 	  if (myfile.is_open())
 	  {
+	  	pthread_mutex_lock ((input->buffer)->mut);
+		(input->buffer->no_running)++;
+		pthread_mutex_unlock ((input->buffer)->mut);
 	    while ( getline (myfile,line) )
 	    {
 	    		string delimiter = " ";
@@ -166,6 +167,7 @@ void* USERS(void* inp){
 		      	message m;
 		      	char* send = "send";
 		      	char* receive = "recieve" ;
+		      	int temp=0;
 		      	if(strcmp(token.c_str(),send)==0){
 		      		m.type = 0;
 		      		token = line.substr(line.find(delimiter)+1,strlen(line.c_str()));
@@ -173,48 +175,69 @@ void* USERS(void* inp){
 		      		token = token.substr(token.find(delimiter)+ 1, strlen(token.c_str()));
 		      		strcpy(m.msg, token.c_str());
 
-		      		while((input->buffer)->full){
-		      			printf ("sender: queue FULL.\n");
-		      			pthread_cond_wait ((input->buffer)->notFull, (input->buffer)->mut);
-		      		}
 		      		pthread_mutex_lock ((input->buffer)->mut);
-		      		pthread_mutex_lock ((input->sinfo)->mut);
+		      		
+		      		while((input->buffer)->full){
+		      			printf ("[Thread %d] Sender: queue FULL.\n",input->tid);
+		      			(input->buffer->no_blocked)++;
+		      			temp=1;
+		      			input->buffer->th_blocked_status[input->tid] = 's';
+		      			check_deadlock(input);
+		      			pthread_cond_wait ((input->buffer)->notFull, (input->buffer)->mut);
+
+		      		}
+		      		if(temp!=0){
+		      			(input->buffer->no_blocked)--;
+		      			temp=0;
+		      		}
+		      		input->buffer->th_blocked_status[input->tid] = 'n';
 		      		q_inp add;
 		      		add.tid = m.receiver;
 		      		add.sid = input->tid;
 		      		strncpy(add.msg, m.msg, MSGLEN);
-		      		queueAdd (input->buffer, add);
-		      		(input->sinfo->tsize)[m.receiver]+=1; 
-		      		cout<<"Message sent: " << input->tid << " " << m.receiver << " "<< m.msg<<endl;
-		      		pthread_mutex_unlock ((input->sinfo)->mut);
+		      		queueAdd (input->buffer, add, m.receiver);
+		      		cout<<"[Thread "<< input->tid << "] Message sent: " << input->tid << " " << m.receiver << " "<< m.msg<<endl;
+		      		pthread_cond_signal ((input->buffer->notEmpty)[m.receiver]);
 		      		pthread_mutex_unlock ((input->buffer)->mut);
-		      		//pthread_cond_signal ((input->buffer)->notEmpty);
-		      		pthread_cond_signal ((input->sinfo->notEmpty)[m.receiver]);
+		      		
 		      		usleep (100000);	
 		      	}
 
 		      	else if(strcmp(token.c_str(),receive)==0){
 		      		m.type = 1;
 		      		m.receiver = -1;
-		      		//cout<<"receive\n";
-		      		while((input->buffer)->empty){
-		      			printf ("[Thread %d]reciever: queue Empty.\n", input->tid);
-		      			pthread_cond_wait ((input->sinfo->notEmpty)[input->tid], (input->buffer)->mut);
-		      		}
 		      		pthread_mutex_lock ((input->buffer)->mut);
-		      		pthread_mutex_lock ((input->sinfo)->mut);
+		      		while((input->buffer->msg_list[input->tid])->empty()){
+		      			printf ("[Thread %d] reciever: queue Empty.\n", input->tid);
+		      			(input->buffer->no_blocked)++;
+		      			input->buffer->th_blocked_status[input->tid] = 'r';
+		      			temp=1;
+		      			if(input->buffer->no_blocked == input->buffer->no_running){
+		      				printf("[Thread %d] Deadlock Detected in\n",input->tid);
+		      			}
+		      			// cout<<"No of blocked threads: "<< input->buffer->no_blocked<<endl;
+		      			// cout<<"No of no_running threads: "<< input->buffer->no_running<<endl;
+		      			pthread_cond_wait ((input->buffer->notEmpty)[input->tid], (input->buffer)->mut);
+		      		}
+		      		if(temp!=0){
+		      			(input->buffer->no_blocked)--;
+		      			temp=0;
+		      		}
+		      		input->buffer->th_blocked_status[input->tid] = 'n';
 		      		q_inp rec = queueRead (input->buffer, input->tid);
-		      		(input->sinfo->tsize)[input->tid] -= 1;
-		      		cout<<"Message received: " << rec.sid << " " << input->tid << " "<< rec.msg<<endl;
-		      		pthread_mutex_unlock ((input->sinfo)->mut);
-		      		pthread_mutex_unlock (input->buffer->mut);
+		      		cout<<"[Thread " << input->tid << "] Message received: " << rec.sid << " " << input->tid << " "<< rec.msg<<endl;
 		      		pthread_cond_signal (input->buffer->notFull);
-		      		//printf ("consumer: recieved %s.\n", rec);
+		      		pthread_mutex_unlock (input->buffer->mut);
 		      		usleep (50000);
 		      	}
 
 	    }
 	    myfile.close();
+	    pthread_mutex_lock ((input->buffer)->mut);
+      	(input->buffer->no_running)--;
+      	check_deadlock(input);
+      	cout<<"[Thread "<< input->tid <<"] Died"<<endl;
+      	pthread_mutex_unlock ((input->buffer)->mut);
 	  }
 	  else{
 	  	pthread_mutex_lock ((input->buffer)->mut);
@@ -235,11 +258,6 @@ int main(){
 		fprintf (stderr, "main: Queue Init failed.\n");
 		exit (1);
 	}
-	size_info *si = sizeinfoInit();
-	if (si ==  NULL) {
-		fprintf (stderr, "main: Size Info Init failed.\n");
-		exit (1);
-	}
 
 	pthread_t users[NUM_THREADS];
 	char files[NUM_THREADS][FILESIZE];
@@ -252,17 +270,14 @@ int main(){
 		p_input* p;
 		p = (p_input*)malloc(sizeof(p_input));
 		p->buffer = FCFS;
-		p->sinfo = si;
 		p->tid = i;
 		strncpy(p->filename, files[i], MSGLEN);
 		pthread_create(&users[i],NULL,USERS,p);
-		//cout<<p.filename<<endl;
 	}
 
 	for(int i =0 ;i<NUM_THREADS ;++i){
 		pthread_join (users[i], NULL);
 	}
 	queueDelete(FCFS);
-	sizeinfoDelete(si);
 	return 0;
 }
