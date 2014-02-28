@@ -836,7 +836,87 @@ int handle_guest_syscalls() {
         isa_ctx->instr_slice = slice;
         break;
     }
+	case syscall_code_guest_read_write:
+     {
+        //ebx, ecx, edx, esi, edi, ebp.
+        int block_size = 512;
+        int op = isa_regs->ebx;
+        int bytes = isa_regs->ecx;
+        void* address = isa_regs->edx;
+        int block_no = isa_regs->esi;
+        int offset = isa_regs->edi;
+        void* buf = malloc(bytes);
+        void* block_buf = malloc(block_size);
+        size_t result;
+        int temp = bytes;
+		FILE* fp;
+		int check = 1;
+        fp = fopen ("Sim_disk", "r");
+        fseek(fp,block_no*block_size,SEEK_SET);
+        if(op == 0){
+            //read from process address space
+            /*
+            while(temp!=0){
+                if(temp>block_size){
+                    result = fread (block_buf,1,block_size,fp);
+                    if(result != block_size) {fputs ("Reading error",stderr); exit (3);}
+                    if(block_buf==NULL){
+                        temp = temp - block_size + offset;
+                        continue;
+                    }
+                    else{
+                        printf("ERROR: Memory location not empty\n");
+                        check = 0;
+                        break;
+                    }
+                }
+                else{
+                    result = fread (block_buf,1,offset + temp,fp);
+                    if(result != offset + temp) {fputs ("Reading error",stderr); exit (3);}
+                    if(block_buf==NULL){
+                        temp = 0;
+                        continue;
+                    }
+                    else{
+						printf("Block buf is %s",block_buf);
+                        printf("ERROR: Memory location not empty\n");
+                        check = 0;
+                        break;
+                    }   
+                }   
+            } 
+            fclose(fp);
+            * */
+            check = 1;
+            if(check==1){
+				mem_read(isa_mem,address,bytes,buf);
+				char* check = (char*)buf;
+				printf("\nData to be stored is %s\n",check);
+				mem_read(isa_mem,address,bytes,buf);
+				fp = fopen ("Sim_disk", "w+");
+				fseek(fp,block_no*block_size+offset,SEEK_SET);
+				fwrite (buf , sizeof(char), sizeof(buf), fp);
+				fclose (fp);
+			}
 
+        }
+        else if(op==1){
+            //write
+            
+			fseek(fp,block_no*block_size + offset,SEEK_SET);
+			char * buffer;
+			buffer = (char*)malloc(bytes);
+			result = fread(buffer,1,bytes,fp);
+			printf("Data found is %s\n",buffer);
+			mem_write(isa_mem,address,bytes,buffer);
+			fclose(fp);
+            
+        }
+        else{
+            printf("Incorrect input\n");
+        }
+        break;
+     }
         default:
             if (syscode >= syscall_code_count) {
                 retval = -38;

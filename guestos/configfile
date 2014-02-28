@@ -1,10 +1,5 @@
 
 [ Context 0 ]
-Exe = 1.out
+Exe = ./a.out
 
 Uid = 1234
-
-[ Context 1 ]
-Exe = 2.out
-
-Uid = 2345
