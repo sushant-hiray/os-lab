@@ -7,19 +7,13 @@
 #include <iostream>
 #include <fstream>
 
+#define BUFFERSIZE 20
 
-#define QUEUESIZE 20
 #define MSGLEN 10
 #define NUM_THREADS 4
 #define FILESIZE 20
-
+#define QUEUESIZE (BUFFERSIZE + 1)
 using namespace std;
-
-// typedef struct{
-// 	int tsize[NUM_THREADS];
-// 	pthread_mutex_t *mut;
-// 	pthread_cond_t* notEmpty[NUM_THREADS];
-// } size_info;
 
 typedef struct{
 	int tid;
@@ -97,6 +91,7 @@ void queueDelete (queue *q)
 	free (q);
 }
 
+//true if queue is full
 void queueAdd (queue *q, q_inp inp, int i){
 
 	if(q->cur_size < QUEUESIZE){
@@ -108,7 +103,6 @@ void queueAdd (queue *q, q_inp inp, int i){
 		}
 		q->empty = 0;
 	}
-	return;
 }
 
 q_inp queueRead(queue* q, int i){
@@ -166,7 +160,7 @@ void* USERS(void* inp){
 	    		string token = line.substr(0, line.find(delimiter));
 		      	message m;
 		      	char* send = "send";
-		      	char* receive = "recieve" ;
+		      	char* receive = "receive" ;
 		      	int temp=0;
 		      	if(strcmp(token.c_str(),send)==0){
 		      		m.type = 0;
@@ -195,6 +189,7 @@ void* USERS(void* inp){
 		      		add.tid = m.receiver;
 		      		add.sid = input->tid;
 		      		strncpy(add.msg, m.msg, MSGLEN);
+
 		      		queueAdd (input->buffer, add, m.receiver);
 		      		cout<<"[Thread "<< input->tid << "] Message sent: " << input->tid << " " << m.receiver << " "<< m.msg<<endl;
 		      		pthread_cond_signal ((input->buffer->notEmpty)[m.receiver]);
@@ -212,9 +207,7 @@ void* USERS(void* inp){
 		      			(input->buffer->no_blocked)++;
 		      			input->buffer->th_blocked_status[input->tid] = 'r';
 		      			temp=1;
-		      			if(input->buffer->no_blocked == input->buffer->no_running){
-		      				printf("[Thread %d] Deadlock Detected in\n",input->tid);
-		      			}
+		      			check_deadlock(input);
 		      			// cout<<"No of blocked threads: "<< input->buffer->no_blocked<<endl;
 		      			// cout<<"No of no_running threads: "<< input->buffer->no_running<<endl;
 		      			pthread_cond_wait ((input->buffer->notEmpty)[input->tid], (input->buffer)->mut);
